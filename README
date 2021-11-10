@@ -3,3 +3,7 @@ Nico Stranquist
 CS4760 Operating Systems
 
 
+Running the Project:
+1. Clone the repository
+2. Run "make" to compile the code
+3. Execute "./oss" with no parameters
