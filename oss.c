@@ -16,9 +16,11 @@
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <getopt.h>
+#include <math.h> // for randomness
 #include "config.h"
 #include "resource_table.h"
 #include "semaphore_manager.h"
+#include "utils.h"
 
 #define PERMS (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 
@@ -119,6 +121,8 @@ int main(int argc, char*argv[]) {
   fprintf(fp, "Log Info for OSS Program:\n"); // clear the logfile to start
   fclose(fp);
 
+  // seed the random
+  srand(time(NULL));
 
   // allocate shared memory
   shmid = shmget(IPC_PRIVATE, sizeof(ResourceTable), IPC_CREAT | 0666); // (struct ProcessTable)
@@ -150,10 +154,26 @@ int main(int argc, char*argv[]) {
   // Start program timer
   alarm(MAX_SECONDS);
 
+  
+  // init clock
+  resource_table->clock.sec = 0;
+  resource_table->clock.ns = 0;
+
+  // init resource table
+  initialize_resource_table();
+
+  print_resources();
+
 
   sleep(10);
-  // start process loop (main logic)
 
+
+  // start process loop (main logic)
+  while(resource_table->total_processes < MAX_PROCESSES_TOTAL) {
+    sleep(1);    
+
+    resource_table->total_processes++;
+  }
   
 
   // cleanup

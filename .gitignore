@@ -3,6 +3,10 @@ examples/
 vscode/
 .vscode/
 .DS_Store
+oss.log
+
 oss
 user
-oss.log
+resource_table
+semaphore_manager
+utils
