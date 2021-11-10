@@ -28,5 +28,8 @@ int initialize_resource_table();
 Resource init_resource();
 void print_resources();
 
+Clock increment_clock_round();
+Clock add_time_to_clock(int sec, int ns);
+
 
 #endif

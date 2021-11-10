@@ -46,3 +46,41 @@ void print_resources() {
   }
   printf("\n");
 }
+
+// function implementations to work with process table
+Clock increment_clock_round() {
+  // get random ns [0,1000] (ms)
+  int ms = getRandom(MILISECONDS+1);
+
+  // convert ms to ns
+  int ns = ms * 1000000;
+
+  // create new time with 1 + ns
+  Clock time_diff = add_time_to_clock(1, ns);
+
+  return time_diff;
+}
+
+Clock add_time_to_clock(int sec, int ns) {
+  // add seconds
+  resource_table->clock.sec = resource_table->clock.sec + sec;
+
+  // check ns for overflow, handle accordingly
+  if((resource_table->clock.ns + ns) >= NANOSECONDS) {
+    int remaining_ns = (resource_table->clock.ns + ns) - NANOSECONDS;
+    resource_table->clock.sec += 1;
+    resource_table->clock.ns = remaining_ns;
+  }
+  else
+    resource_table->clock.ns += ns;
+  
+  printf("\n");
+
+  printf("new time: %d sec, %d ns\n", resource_table->clock.sec, resource_table->clock.ns);
+
+  Clock time_diff;
+  time_diff.sec = sec;
+  time_diff.ns = ns;
+
+  return time_diff;
+}

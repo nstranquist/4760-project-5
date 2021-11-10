@@ -8,8 +8,8 @@
 #define MAX_PROCESSES_RUNNING 18
 
 #define NANOSECONDS 1000000000
-
 #define MILISECONDS 1000
+#define MS_NS_CONVERSION 1000000
 
 typedef struct {
   int sec;

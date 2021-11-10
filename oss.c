@@ -33,11 +33,16 @@ int semid; // to manage semaphore
 struct sembuf semsignal[1];
 struct sembuf semwait[1];
 
+Clock next_fork;
+
 
 // function definitions
 int detachandremove(int shmid, void *shmaddr);
 void logmsg(const char *msg);
 void cleanup();
+void generateNextChildFork();
+int wait_time_is_up(); // compares next_fork with Clock's current time
+
 
 static void myhandler(int signum) {
   // is ctrl-c interrupt
@@ -97,6 +102,7 @@ static int timerHandler(int s) {
 int main(int argc, char*argv[]) {
   printf("Starting oss... no parameters required\n");
 
+  int nextFork;
 
   // setup timers and interrupts
   if (setupinterrupt() == -1) {
@@ -164,15 +170,28 @@ int main(int argc, char*argv[]) {
 
   print_resources();
 
+  // generate next time
+  generateNextChildFork();
 
-  sleep(10);
-
+  printf("next fork in: %d sec, %d ns\n", next_fork.sec, next_fork.ns);
 
   // start process loop (main logic)
   while(resource_table->total_processes < MAX_PROCESSES_TOTAL) {
-    sleep(1);    
+    Clock round_diff = increment_clock_round();
+
+    if(wait_time_is_up() == -1) {
+      printf("oss is waiting to generate fork new child process\n");
+      // incrememnt clock, return;
+      increment_clock_round();
+
+      continue;
+    }
+    
+    printf("It is time to fork a child! Mocking this for now...\n");
+
 
     resource_table->total_processes++;
+    printf("new # processes: %d\n", resource_table->total_processes);
   }
   
 
@@ -234,4 +253,33 @@ void logmsg(const char *msg) {
     if(c == '\n')
       linecount++;
   }
+}
+
+int wait_time_is_up() {
+  // compare next_sec and next_ns with what's in the process table
+  if(next_fork.sec < resource_table->clock.sec) {
+    return 0;
+  }
+  if(next_fork.sec == resource_table->clock.sec) {
+    if(next_fork.ns < resource_table->clock.ns) {
+      return 0;
+    }
+  }
+
+  return -1; // -1 means not
+}
+
+void generateNextChildFork() {
+  int random_ms = getRandom(500) + 1; // 1-500 milliseconds
+  int ns = random_ms * MS_NS_CONVERSION;
+  // set next__fork to current clock
+  next_fork.sec = resource_table->clock.sec;
+  next_fork.ns = resource_table->clock.ns;
+  if((next_fork.ns + ns) > NANOSECONDS) {
+    int remainder_ns = next_fork.ns + ns;
+    next_fork.sec++;
+    next_fork.ns = remainder_ns;
+  }
+  else
+    next_fork.ns = next_fork.ns + ns;
 }

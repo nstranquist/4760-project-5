@@ -6,8 +6,8 @@ all: oss user
 oss: oss.o user.o resource_table.o semaphore_manager.o utils.o config.h
 	gcc -Wall -g -o oss oss.o resource_table.o semaphore_manager.o utils.o
 
-user: user.o
-	gcc -Wall -g -o user user.o
+user: user.o utils.o
+	gcc -Wall -g -o user user.o utils.o
 
 resource_table: resource_table.o utils.o
 	gcc -Wall -g -o resource_table resource_table.o utils.o
