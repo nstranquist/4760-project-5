@@ -5,4 +5,9 @@
 
 #define MAX_PROCESSES 40
 
+typedef struct {
+  int sec;
+  int ns;
+} Clock;
+
 #endif

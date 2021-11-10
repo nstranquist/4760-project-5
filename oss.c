@@ -17,20 +17,25 @@
 #include <sys/stat.h>
 #include <getopt.h>
 #include "config.h"
+#include "resource_table.h"
+#include "semaphore_manager.h"
+
+#define PERMS (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 
 
 // global variables
+extern ResourceTable *resource_table;
 const char* logfile = "oss.log";
 int shmid; // to manage shared memory
 int semid; // to manage semaphore
-int semaddr; // to manage semaphore
+struct sembuf semsignal[1];
+struct sembuf semwait[1];
 
 
 // function definitions
 int detachandremove(int shmid, void *shmaddr);
 void logmsg(const char *msg);
 void cleanup();
-
 
 static void myhandler(int signum) {
   // is ctrl-c interrupt
@@ -114,10 +119,31 @@ int main(int argc, char*argv[]) {
   fprintf(fp, "Log Info for OSS Program:\n"); // clear the logfile to start
   fclose(fp);
 
+
   // allocate shared memory
+  shmid = shmget(IPC_PRIVATE, sizeof(ResourceTable), IPC_CREAT | 0666); // (struct ProcessTable)
+  if (shmid == -1) {
+    perror("oss: Error: Failed to create shared memory segment for process table\n");
+    return -1;
+  }
 
+  // attach shared memory
+  resource_table = (ResourceTable *)shmat(shmid, NULL, 0);
+  if (resource_table == (void *) -1) {
+    perror("oss: Error: Failed to attach to shared memory\n");
+    if (shmctl(shmid, IPC_RMID, NULL) == -1)
+      perror("oss: Error: Failed to remove memory segment\n");
+    return -1;
+  }
 
-  // allocate semaphore
+  // Create semaphore containing a single element
+  if((semid = semget(IPC_PRIVATE, 1, PERMS)) == -1) {
+    perror("runsim: Error: Failed to create private semaphore\n");
+    return 1;
+  }
+
+  setsembuf(semwait, 0, -1, 0); // decrement first element of semwait
+  setsembuf(semsignal, 0, 1, 0); // increment first element of semsignal
 
 
 
@@ -126,7 +152,6 @@ int main(int argc, char*argv[]) {
 
 
   sleep(10);
-
   // start process loop (main logic)
 
   
@@ -134,16 +159,20 @@ int main(int argc, char*argv[]) {
   // cleanup
   cleanup();
 
-
   return 0;
 }
 
 
 void cleanup() {
-  // if(detachandremove(shmid, resource_table) == -1) {
-  //   perror("oss: Error: Failure to detach and remove memory\n");
-  // }
-  // else printf("success detatch\n");
+  if(removesem(semid) == -1) {
+    perror("runsim: Error: Failed to remove semaphore\n");
+  }
+  else printf("sucess remove sem\n");
+  if(detachandremove(shmid, resource_table) == -1) {
+    perror("oss: Error: Failure to detach and remove memory\n");
+  }
+  else printf("success detatch\n");
+  // semaphore
 }
 
 // From textbook
