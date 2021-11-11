@@ -43,7 +43,7 @@ void logmsg(const char *msg);
 void cleanup();
 void generate_report();
 void print_output_table();
-void generateNextChildFork();
+void generate_next_child_fork();
 int wait_time_is_up(); // compares next_fork with Clock's current time
 int check_line_count(FILE *fp);
 
@@ -135,7 +135,7 @@ int main(int argc, char*argv[]) {
   srand(time(NULL));
 
   // allocate shared memory
-  shmid = shmget(IPC_PRIVATE, sizeof(ResourceTable), IPC_CREAT | 0666); // (struct ProcessTable)
+  shmid = shmget(IPC_PRIVATE, sizeof(ResourceTable), PERMS | 0666); // (struct ProcessTable)
   if (shmid == -1) {
     perror("oss: Error: Failed to create shared memory segment for process table\n");
     return -1;
@@ -152,30 +152,42 @@ int main(int argc, char*argv[]) {
 
   // Create semaphore containing a single element
   if((semid = semget(IPC_PRIVATE, 1, PERMS)) == -1) {
-    perror("runsim: Error: Failed to create private semaphore\n");
+    perror("oss: Error: Failed to create private semaphore\n");
     return 1;
   }
 
   setsembuf(semwait, 0, -1, 0); // decrement first element of semwait
   setsembuf(semsignal, 0, 1, 0); // increment first element of semsignal
 
-
+  // initialize semaphore before use
+  if(initelement(semid, 0, 1) == -1) {
+    perror("oss: Error: Failed to init semaphore element value to 1\n");
+    if(removesem(semid) == -1)
+      perror("oss: Error: Failed to remove failed semaphore\n");
+    return 1;
+  }
 
   // Start program timer
   alarm(MAX_SECONDS);
 
   
-  // init clock
+  // init clock as cs
+  wait_sem(semid, semwait, 1);
   resource_table->clock.sec = 0;
   resource_table->clock.ns = 0;
+  signal_sem(semid, semsignal, 1);
 
-  // init resource table
+  // init resource table as cs
+  wait_sem(semid, semwait, 1);
   initialize_resource_table();
+  signal_sem(semid, semsignal, 1);
 
   print_resources();
 
-  // generate next time
-  generateNextChildFork();
+  // generate next time as cs
+  wait_sem(semid, semwait, 1);
+  generate_next_child_fork();
+  signal_sem(semid, semsignal, 1);
 
   printf("next fork in: %d sec, %d ns\n", next_fork.sec, next_fork.ns);
 
@@ -221,8 +233,12 @@ int main(int argc, char*argv[]) {
       char* process_b_str = malloc( b_length + 1 );
       snprintf( process_b_str, b_length + 1, "%d", process_b );
 
+      int shmid_length = snprintf( NULL, 0, "%d", shmid );
+      char* shmid_str = malloc( shmid_length + 1 );
+      snprintf( shmid_str, shmid_length + 1, "%d", shmid );
+
       // execl
-      execl("./user", "./user", process_b_str, (char *) NULL); // 1 arg: pass shmid
+      execl("./user", "./user", process_b_str, shmid_str, (char *) NULL); // 1 arg: pass shmid
       perror("oss: Error: Child failed to execl");
       cleanup();
       exit(0);
@@ -398,6 +414,7 @@ int check_line_count(FILE *fp) {
 }
 
 int wait_time_is_up() {
+  // implement as critical section
   // compare next_sec and next_ns with what's in the process table
   if(next_fork.sec < resource_table->clock.sec) {
     return 0;
@@ -411,7 +428,7 @@ int wait_time_is_up() {
   return -1; // -1 means not
 }
 
-void generateNextChildFork() {
+void generate_next_child_fork() {
   int random_ms = getRandom(500) + 1; // 1-500 milliseconds
   int ns = random_ms * MS_NS_CONVERSION;
   // set next__fork to current clock
