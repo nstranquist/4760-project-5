@@ -34,6 +34,7 @@ struct sembuf semsignal[1];
 struct sembuf semwait[1];
 
 Clock next_fork;
+Clock time_diff; // keep track of last round's time difference
 
 
 // function definitions
@@ -177,8 +178,6 @@ int main(int argc, char*argv[]) {
 
   // start process loop (main logic)
   while(resource_table->total_processes < MAX_PROCESSES_TOTAL) {
-    Clock round_diff = increment_clock_round();
-
     if(wait_time_is_up() == -1) {
       printf("oss is waiting to generate fork new child process\n");
       // incrememnt clock, return;
@@ -187,11 +186,30 @@ int main(int argc, char*argv[]) {
       continue;
     }
     
+    // before forking, check if current active processes < 18
+    // IF >= 18, report this, increment the clock, and continue the loop
+    if(resource_table->current_processes >= 18) {
+      printf("oss: Warning: Max active processes reached. Skipping this round\n");
+      increment_clock_round();
+      continue;
+    }
+
     printf("It is time to fork a child! Mocking this for now...\n");
+
+
+    // increment 'current_processes' when forked, decrement it when child finishes
+
 
 
     resource_table->total_processes++;
     printf("new # processes: %d\n", resource_table->total_processes);
+
+    time_diff = increment_clock_round();
+  }
+
+  // Wait for all children to finish, after the main loop is complete
+  while(wait(NULL) > 0) {
+    printf("oss: Info: Waiting for all children to finish...\n");
   }
   
 

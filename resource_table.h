@@ -20,6 +20,7 @@ typedef struct {
 
 typedef struct {
   int total_processes;
+  int current_processes;
   Clock clock;
   Resource resources[20];
 } ResourceTable;
