@@ -1,9 +1,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define MAX_SECONDS 5
+#define MAX_SECONDS 50 // 5
 
-#define MAX_PROCESSES_TOTAL 40
+#define MAX_PROCESSES_TOTAL 4 // 40
 
 #define MAX_PROCESSES_RUNNING 18
 

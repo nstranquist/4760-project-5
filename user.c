@@ -57,7 +57,8 @@ int main(int argc, char *argv[]) {
   int next_request = getRandom(b + 1);
   printf("next request: %d\n", next_request);
 
-
+  // sleep to test concurrency in oss
+  // sleep(0.2);
 
   // schedule to ask for the resources
   // WHEN it does get the request approved,
@@ -79,7 +80,7 @@ int main(int argc, char *argv[]) {
 
 
   // release the resources
-
-
+  fprintf(stderr, "user: Child is exiting\n");
+  exit(0);
   return 0;
 }

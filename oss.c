@@ -203,16 +203,21 @@ int main(int argc, char*argv[]) {
       continue;
     }
 
-    if(resource_table->total_processes == 20 || resource_table->total_processes == 20) {
+    // print the output table every 20 processes
+    if(resource_table->total_processes == 20 || resource_table->total_processes == 40) {
       print_output_table();
     }
     
     // before forking, check if current active processes < 18
     // IF >= 18, report this, increment the clock, and continue the loop
-    if(resource_table->current_processes >= 18) {
+    if(resource_table->current_processes >= MAX_PROCESSES_RUNNING) {
       printf("oss: Warning: Max active processes reached. Skipping this round\n");
 
       increment_clock();
+      continue;
+    }
+    if(resource_table->total_processes > MAX_PROCESSES_TOTAL) {
+      printf("oss: Warning: Max total processes reached. Skipping this round\n");
       continue;
     }
 
@@ -249,26 +254,45 @@ int main(int argc, char*argv[]) {
     else {
       // in parent
       resource_table->current_processes++;
-
+      resource_table->total_processes++;
       // can write message to logfile
 
-      // make WNHOHANG?
       pid_t wpid = wait(NULL);
-      if (wpid == -1) {
-        perror("oss: Error: Failed to wait for child\n");
+      if(wpid == -1) {
+        perror("oss: Error: Failed to wait for child");
         cleanup();
         return 1;
       }
 
-      resource_table->current_processes--; // when the process as finished
+      // parent waits inside loop for child to finish
+      // int status;
+      // pid_t wpid = waitpid(child_pid, &status, WNOHANG);
+      // fprintf(stderr, "wpid: %d\n", wpid);
+      // if (wpid == -1) {
+      //   perror("oss: Error: Failed to wait for child");
+      //   cleanup();
+      //   return 1;
+      // }
+      // else if(wpid == 0) {
+      //   // child is still running
+      //   fprintf(stderr, "child is still running\n");
+      // }
+      // else {
+      //   // child has finished
+      //   fprintf(stderr, "A child has finished\n");
+      //   resource_table->current_processes--; // when the process as finished
+      // }
     }
 
-    resource_table->total_processes++;
-    printf("new # processes: %d\n", resource_table->total_processes);
+    fprintf(stderr, "A child has finished\n");
+    resource_table->current_processes--;
+
+    printf("new # total processes: %d, new # active processes: %d\n", resource_table->total_processes, resource_table->current_processes);
 
     // increment in cs
 
     time_diff = increment_clock();
+    sleep(1);
   }
 
   // Wait for all children to finish, after the main loop is complete
@@ -394,6 +418,7 @@ void print_output_table() {
 
   // get information to log
   // --> mocking for now
+  fprintf(fp, "Current System Resources:\n");
   fprintf(fp, "Printing output table...\n");
   fclose(fp);
   return;
@@ -456,3 +481,6 @@ Clock increment_clock() {
   
   return time_temp;
 }
+
+// xxx:xxxx
+// char * get_time_string() {  }

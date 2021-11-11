@@ -1,5 +1,12 @@
 #include "deadlock_detection.h"
 
+/**
+ * Deadlock Detection and Resolution in Project 5: Resource Management
+ * 
+ * - Use the deadlock avoidance strategy, using maximum claims, to manage resources.
+ * 
+ */
+
 // NOTE: in 'bool' types, 1 is true, 0 is false
 
 // sending everything as constant. Should not be changed during within this function
