@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   char *b_str = argv[1];
-  printf("b from params: %s=d\n", b_str);
+  printf("b from params: %s\n", b_str);
 
   if(!atoi(b_str)) {
     perror("user: Error: paramter received for 'B' is not a number\n");

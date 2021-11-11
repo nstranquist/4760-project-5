@@ -41,6 +41,7 @@ Clock time_diff; // keep track of last round's time difference
 int detachandremove(int shmid, void *shmaddr);
 void logmsg(const char *msg);
 void cleanup();
+void generate_report();
 void generateNextChildFork();
 int wait_time_is_up(); // compares next_fork with Clock's current time
 
@@ -59,7 +60,7 @@ static void myhandler(int signum) {
 
   fprintf(stderr, "interrupt handler\n");
 
-  // generateReport();
+  generate_report();
 
   cleanup();
   
@@ -194,12 +195,48 @@ int main(int argc, char*argv[]) {
       continue;
     }
 
-    printf("It is time to fork a child! Mocking this for now...\n");
-
+    printf("It is time to fork a child!\n");
 
     // increment 'current_processes' when forked, decrement it when child finishes
+    pid_t child_pid = fork();
 
+    if (child_pid == -1) {
+      perror("oss: Error: Failed to fork a child process\n");
+      cleanup();
+      return -1;
+    }
 
+    if (child_pid == 0) {
+      // attach memory again as child
+      resource_table = (ResourceTable *)shmat(shmid, NULL, 0);
+
+      int process_b = getRandom(500) + 1; // 1-500 for value of 'B'
+      int b_length = snprintf( NULL, 0, "%d", process_b );
+      char* process_b_str = malloc( b_length + 1 );
+      snprintf( process_b_str, b_length + 1, "%d", process_b );
+
+      // execl
+      execl("./user", "./user", process_b_str, (char *) NULL); // 1 arg: pass shmid
+      perror("oss: Error: Child failed to execl");
+      cleanup();
+      exit(0);
+    }
+    else {
+      // in parent
+      resource_table->current_processes++;
+
+      // can write message to logfile
+
+      // make WNHOHANG?
+      pid_t wpid = wait(NULL);
+      if (wpid == -1) {
+        perror("oss: Error: Failed to wait for child\n");
+        cleanup();
+        return 1;
+      }
+
+      resource_table->current_processes--; // when the process as finished
+    }
 
     resource_table->total_processes++;
     printf("new # processes: %d\n", resource_table->total_processes);
@@ -212,6 +249,8 @@ int main(int argc, char*argv[]) {
     printf("oss: Info: Waiting for all children to finish...\n");
   }
   
+  // generate report and log to file
+  generate_report();
 
   // cleanup
   cleanup();
@@ -271,6 +310,10 @@ void logmsg(const char *msg) {
     if(c == '\n')
       linecount++;
   }
+}
+
+void generate_report() {
+  printf("working on generating report still\n");
 }
 
 int wait_time_is_up() {
