@@ -11,6 +11,8 @@
 #define MILISECONDS 1000
 #define MS_NS_CONVERSION 1000000
 
+#define LOGFILE_MAX_LINES 100000
+
 typedef struct {
   int sec;
   int ns;

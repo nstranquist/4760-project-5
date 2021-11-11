@@ -42,8 +42,10 @@ int detachandremove(int shmid, void *shmaddr);
 void logmsg(const char *msg);
 void cleanup();
 void generate_report();
+void print_output_table();
 void generateNextChildFork();
 int wait_time_is_up(); // compares next_fork with Clock's current time
+int check_line_count(FILE *fp);
 
 
 static void myhandler(int signum) {
@@ -186,6 +188,10 @@ int main(int argc, char*argv[]) {
 
       continue;
     }
+
+    if(resource_table->total_processes == 20 || resource_table->total_processes == 20) {
+      print_output_table();
+    }
     
     // before forking, check if current active processes < 18
     // IF >= 18, report this, increment the clock, and continue the loop
@@ -260,15 +266,16 @@ int main(int argc, char*argv[]) {
 
 
 void cleanup() {
+  // semaphore
   if(removesem(semid) == -1) {
     perror("runsim: Error: Failed to remove semaphore\n");
   }
   else printf("sucess remove sem\n");
+  // shared memory
   if(detachandremove(shmid, resource_table) == -1) {
     perror("oss: Error: Failure to detach and remove memory\n");
   }
   else printf("success detatch\n");
-  // semaphore
 }
 
 // From textbook
@@ -300,7 +307,78 @@ void logmsg(const char *msg) {
     return;
   }
 
-  // Check if lines in the file >10,000
+  // Check if lines in the file >100,000
+  if(check_line_count(fp) == -1) {
+    fprintf(stderr, "line count reached");
+    fclose(fp);
+    return;
+  }
+
+  fprintf(fp, "%s\n", msg);
+  fclose(fp);
+}
+
+void generate_report() {
+  printf("working on generating report still\n");
+
+  FILE *fp = fopen(logfile, "a+");
+  if(fp == NULL) {
+    perror("oss: Error: Could not open log file");
+    return;
+  }
+
+  if(check_line_count(fp) == -1) {
+    fprintf(stderr, "line count reached");
+    fclose(fp);
+    return;
+  }
+
+  // Actually gather report items for writing to file:
+  // - how many requests have been granted immediately
+  // - how many requests are granted after waiting for a bit
+  // - number of processes terminated by deadlock algorithm
+  // - number of processes terminated successfully and naturally (no deadlock)
+  // - how many times the deadlock detection is run
+  // - how many processes it had to terminate
+  // - percentage of processes that got caught in a deadlock and had to be terminated, on average
+
+  // --> mock for now
+  fprintf(fp, "Generating report info...\n");
+  fclose(fp);
+  return;
+}
+
+void print_output_table() {
+  // prints a table to logfile showing the current # of resources allocated to each process
+  // Example:
+  //    R0  R1  R3  R4  ...
+  // P0 2   1   3   4   ...
+  // P1 0   1   1   0   ...
+  // P2 3   0   2   2   ...
+
+  // open logfile
+  FILE *fp = fopen(logfile, "a+");
+  if(fp == NULL) {
+    perror("oss: Error: Coudl not open log file");
+    fclose(fp);
+    return;
+  }
+
+  // check line count
+  if(check_line_count(fp) == -1) {
+    fprintf(stderr, "line count reached");
+    fclose(fp);
+    return;
+  }
+
+  // get information to log
+  // --> mocking for now
+  fprintf(fp, "Printing output table...\n");
+  fclose(fp);
+  return;
+}
+
+int check_line_count(FILE *fp) {
   int linecount = 0;
   char c;
   while(1) {
@@ -310,10 +388,13 @@ void logmsg(const char *msg) {
     if(c == '\n')
       linecount++;
   }
-}
 
-void generate_report() {
-  printf("working on generating report still\n");
+  if(linecount > LOGFILE_MAX_LINES) {
+    perror("oss: Error: logfile has exceeded max lines");
+    return -1;
+  }
+
+  return 0;
 }
 
 int wait_time_is_up() {
