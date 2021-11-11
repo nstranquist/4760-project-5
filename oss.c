@@ -16,11 +16,13 @@
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <getopt.h>
+#include <stdbool.h>
 #include <math.h> // for randomness
 #include "config.h"
 #include "resource_table.h"
 #include "semaphore_manager.h"
 #include "utils.h"
+#include "deadlock_detection.h"
 
 #define PERMS (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 
