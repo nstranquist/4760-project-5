@@ -67,3 +67,30 @@ bool deadlock(const int *available, const int m, const int n, const int *request
   // will return true if p != n, which indicates a deadlock
   return (p != n);
 }
+
+/**
+ * Banker's Algorithm - Data Structures
+ * - available: vector of length n, # available resources of each type
+ *    - available[j] = k, where k instances are of resource class Rj available
+ * - maximum: n x m matrix that defines maximum demand for each process
+ *    - maximum[i, j] = k, where process pi may request at most k instances of resource class Rj
+ * - allocation: n x m matrix that defines the # resources of each type currently allocated to each process
+ *    - allocation[i, j] = k, where process pi is currently allocated to k instances of resource class Rj
+ * - need: n x m matrix that indicates the remaining resource needs of each process
+ *    - need[i, j] = k, where process pi may need k more instances of resource type Rj in order to complete its task
+ *    - need[i, j] = maximum[i, j] - allocation[i, j]
+ */
+void bankers_algorithm(const int *available, const int *request, const int *allocated, const int *need, const int i, const int *p) {
+  if(request[i] > need[i]) {
+    throw("Asked more than initial request");
+  }
+
+  if(request[i] <= available) {
+    available -= request[i];
+    allocation[i] += request[i];
+    need[i] -= request[i];
+  }
+  else {
+    p[i].wait(); // send process i into wait state
+  }
+}
