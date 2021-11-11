@@ -60,7 +60,21 @@ int main(int argc, char *argv[]) {
 
 
   // schedule to ask for the resources
+  // WHEN it does get the request approved,
+  // - either request resources
+  // - or release resources (if previously requested)
+  // - continue in a loop in this fashion until termination
 
+
+  // the process checks if it should terminate in random intervals [0,250] milliseconds
+
+  // IF it should terminate,
+  // - release all resources allocated to it by communicating to oss that it is releasing the resources
+  // - do this only after it has run for at least 1 second
+  // - do this by putting a request in shared memory for oss to pick up
+  // - the request should never exceed the total number of resources of that class within the system
+  // - update the system clock
+  // - the process may decide to give up resources instead of asking for them
 
 
 

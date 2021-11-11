@@ -46,6 +46,7 @@ void print_output_table();
 void generate_next_child_fork();
 int wait_time_is_up(); // compares next_fork with Clock's current time
 int check_line_count(FILE *fp);
+Clock increment_clock();
 
 
 static void myhandler(int signum) {
@@ -195,8 +196,7 @@ int main(int argc, char*argv[]) {
   while(resource_table->total_processes < MAX_PROCESSES_TOTAL) {
     if(wait_time_is_up() == -1) {
       printf("oss is waiting to generate fork new child process\n");
-      // incrememnt clock, return;
-      increment_clock_round();
+      increment_clock();
 
       continue;
     }
@@ -209,7 +209,8 @@ int main(int argc, char*argv[]) {
     // IF >= 18, report this, increment the clock, and continue the loop
     if(resource_table->current_processes >= 18) {
       printf("oss: Warning: Max active processes reached. Skipping this round\n");
-      increment_clock_round();
+
+      increment_clock();
       continue;
     }
 
@@ -263,7 +264,9 @@ int main(int argc, char*argv[]) {
     resource_table->total_processes++;
     printf("new # processes: %d\n", resource_table->total_processes);
 
-    time_diff = increment_clock_round();
+    // increment in cs
+
+    time_diff = increment_clock();
   }
 
   // Wait for all children to finish, after the main loop is complete
@@ -441,4 +444,13 @@ void generate_next_child_fork() {
   }
   else
     next_fork.ns = next_fork.ns + ns;
+}
+
+Clock increment_clock() {
+  // increment_clock_round but as a critical section
+  wait_sem(semid, semwait, 1);
+  Clock time_temp = increment_clock_round();
+  signal_sem(semid, semsignal, 1);
+  
+  return time_temp;
 }
