@@ -10,12 +10,15 @@
 // #include "config.h"
 #include "utils.h"
 #include "resource_table.h"
+#include "queue.h"
 // #include "semaphore_manager.h"
 
 extern ResourceTable *resource_table;
 int size;
 int shmid;
 // semaphore structures here, if needed
+
+mymsg_t mymsg;
 
 int main(int argc, char *argv[]) {
   printf("In user!\n");
@@ -57,6 +60,22 @@ int main(int argc, char *argv[]) {
   int next_request = getRandom(b + 1);
   printf("next request: %d\n", next_request);
 
+  // send test message to oss
+  char *buf = "Hello from User";
+  int pid = getpid();
+  int msg_type = 1;
+
+  fprintf(stderr, "about to send message\n");
+  
+  if((size = msgwrite(buf, 100, msg_type, resource_table->queueid, pid, 0)) == -1) {
+    perror("oss/user: Error: could not send message from user to oss\n");
+    return 1;
+  }
+  else {
+    printf("sent message back to oss from user\n");
+  }
+  
+
   // sleep to test concurrency in oss
   // sleep(0.2);
 
@@ -80,7 +99,7 @@ int main(int argc, char *argv[]) {
 
 
   // release the resources
-  fprintf(stderr, "user: Child is exiting\n");
-  exit(0);
+  // fprintf(stderr, "user: Child is exiting\n");
+  // exit(0);
   return 0;
 }

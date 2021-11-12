@@ -14,6 +14,7 @@
 #include <sys/wait.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
+#include <sys/msg.h>
 #include <sys/stat.h>
 #include <getopt.h>
 #include <stdbool.h>
@@ -23,6 +24,7 @@
 #include "semaphore_manager.h"
 #include "utils.h"
 #include "deadlock_detection.h"
+#include "queue.h"
 
 #define PERMS (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 
@@ -37,6 +39,8 @@ struct sembuf semwait[1];
 
 Clock next_fork;
 Clock time_diff; // keep track of last round's time difference
+
+mymsg_t mymsg; // for queue
 
 
 // function definitions
@@ -153,6 +157,15 @@ int main(int argc, char*argv[]) {
     return -1;
   }
 
+  // Initialize Message Queue
+  int queueid = initqueue(IPC_PRIVATE);
+  if(queueid == -1) {
+    perror("oss: Error: Failed to initialize message queue\n");
+    cleanup();
+    return -1;
+  }
+  resource_table->queueid = queueid;
+
   // Create semaphore containing a single element
   if((semid = semget(IPC_PRIVATE, 1, PERMS)) == -1) {
     perror("oss: Error: Failed to create private semaphore\n");
@@ -255,6 +268,17 @@ int main(int argc, char*argv[]) {
       // in parent
       resource_table->current_processes++;
       resource_table->total_processes++;
+
+      // setup message receiver
+      int msg_size = msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 0, 0);
+      if(msg_size == -1) {
+        perror("oss: Error: Could not receive message from child\n");
+        cleanup();
+        return 1;
+      }
+
+      print_message(mymsg);
+
       // can write message to logfile
 
       pid_t wpid = wait(NULL);
@@ -263,6 +287,8 @@ int main(int argc, char*argv[]) {
         cleanup();
         return 1;
       }
+
+      
 
       // parent waits inside loop for child to finish
       // int status;
@@ -311,14 +337,19 @@ int main(int argc, char*argv[]) {
 
 
 void cleanup() {
+  // message queue
+  if(remmsgqueue(resource_table->queueid) == -1) {
+    perror("oss: Error: Failed to remove message queue");
+  }
+  else printf("success remove msgqueue\n");
   // semaphore
   if(removesem(semid) == -1) {
-    perror("runsim: Error: Failed to remove semaphore\n");
+    perror("runsim: Error: Failed to remove semaphore");
   }
   else printf("sucess remove sem\n");
   // shared memory
   if(detachandremove(shmid, resource_table) == -1) {
-    perror("oss: Error: Failure to detach and remove memory\n");
+    perror("oss: Error: Failure to detach and remove memory");
   }
   else printf("success detatch\n");
 }

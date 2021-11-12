@@ -19,6 +19,7 @@ typedef struct {
 } Resource; // ResourceDescriptor
 
 typedef struct {
+  int queueid;
   int total_processes;
   int current_processes;
   Clock clock;

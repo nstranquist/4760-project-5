@@ -13,6 +13,8 @@
 
 #define LOGFILE_MAX_LINES 100000
 
+#define MAX_MSG_SIZE 4096
+
 typedef struct {
   int sec;
   int ns;
