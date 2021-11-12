@@ -9,3 +9,19 @@ Running the Project:
 1. Clone the repository
 2. Run "make" to compile the code
 3. Execute "./oss" with no parameters
+
+
+Project Description:
+This program simulates an operating system in "oss", but it ignores every aspect except the resource management and core parts like a system clock that are essential to manage the system resources. There are no required parameters to run this program, you just have to run `./oss` after compiling it.
+
+
+
+Method of Communication between OSS and User (parent and child):
+I use IPC message queues to communicate back and forth between the parent process (oss) and the child process (user).
+These messages help to tell user when to schedule, and help to tell oss when it is releasing resources.
+
+
+Deadlock Detection (Avoidance with Maximum Claims):
+This project uses the Deadlock Detection algorithm, and uses the Deadlock Avoidance with Maximum Claims strategy to prevent deadlock.
+I complete this code in deadlock_detection.c, and I call the functions in the parent process, oss.c.
+This is used in order to make sure that system resources which are not marked as shareable do not get caught in a deadlock betweeen competing child processes.
