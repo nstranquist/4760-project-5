@@ -35,6 +35,8 @@ Resource init_resource(int shareable, int n_resources) {
   new.release = 0;
   new.request = 0;
 
+  new.available = 0; // todo: generate number between 1-10
+
   return new;
 }
 
@@ -84,3 +86,43 @@ Clock add_time_to_clock(int sec, int ns) {
 
   return time_diff;
 }
+
+int request() {
+  // mock for now
+  int error = 0;
+
+  // request system resources, update the resource table accordingly
+
+
+  if(error == 1) {
+    return -1;
+  }
+  return 0;
+}
+
+int allocate() {
+  // mock for now
+  int error = 0;
+
+  // allocate system resources, update the resource table accordingly
+  
+
+  if(error == 1) {
+    return -1;
+  }
+  return 0;
+}
+
+int release() {
+  // mock for now
+  int error = 0;
+
+  // release system resources, update the resource table accordingly
+  
+
+  if(error == 1) {
+    return -1;
+  }
+  return 0;
+}
+

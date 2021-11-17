@@ -80,17 +80,17 @@ bool deadlock(const int *available, const int m, const int n, const int *request
  *    - need[i, j] = k, where process pi may need k more instances of resource type Rj in order to complete its task
  *    - need[i, j] = maximum[i, j] - allocation[i, j]
  */
-// void bankers_algorithm(const int *available, const int *request, const int *allocated, const int *need, const int i, const int *p) {
-//   if(request[i] > need[i]) {
-//     throw("Asked more than initial request");
-//   }
+void bankers_algorithm(const int *available, const int *request, int *allocation, int *need, const int i, int *p) {
+  if(request[i] > need[i]) {
+    throw("Asked more than initial request");
+  }
 
-//   if(request[i] <= available) {
-//     available -= request[i];
-//     allocation[i] += request[i];
-//     need[i] -= request[i];
-//   }
-//   else {
-//     p[i].wait(); // send process i into wait state
-//   }
-// }
+  if(request[i] <= available) {
+    available -= request[i];
+    allocation[i] += request[i];
+    need[i] -= request[i];
+  }
+  else {
+    // p[i].wait(); // send process i into wait state
+  }
+}

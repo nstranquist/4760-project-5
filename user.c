@@ -56,10 +56,17 @@ int main(int argc, char *argv[]) {
   int b = atoi(b_str);
 
   // generate random from [0, B], where B is the upper bound for when a process should request a new resource
-  // is B milliseconds or nanoseconds?
   int next_request = getRandom(b + 1);
   printf("next request: %d\n", next_request);
 
+  // never more than 5 instances of the tape drive (# instances available in the system)
+
+  // # units available at the address of the pointer
+
+  // ask for resource to allocate
+
+  // what information is needed to communicate properly with oss?
+  // what information is in a given resource descriptor?
   // send test message to oss
   char *buf = "Hello from User";
   int pid = getpid();

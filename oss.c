@@ -279,6 +279,10 @@ int main(int argc, char*argv[]) {
 
       print_message(mymsg);
 
+      // if it has the resources available AND if it is safe
+        // check resource descriptor
+
+
       // can write message to logfile
 
       pid_t wpid = wait(NULL);
