@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <semaphore.h>
 #include <math.h> // for randomness
 #include "config.h"
 #include "resource_table.h"
@@ -53,7 +54,7 @@ int detachandremove(int shmid, void *shmaddr);
 void logmsg(const char *msg);
 void cleanup();
 void generate_report();
-void print_output_table();
+void print_current_resources();
 void generate_next_child_fork();
 int wait_time_is_up(); // compares next_fork with Clock's current time
 int check_line_count(FILE *fp);
@@ -209,7 +210,7 @@ int main(int argc, char*argv[]) {
   initialize_resource_table();
   signal_sem(semid, semsignal, 1);
 
-  print_resources();
+  // print_resources();
 
   // generate next time as cs
   wait_sem(semid, semwait, 1);
@@ -221,17 +222,12 @@ int main(int argc, char*argv[]) {
   // start process loop (main logic)
   while(resource_table->total_processes < MAX_PROCESSES_TOTAL) {
     if(wait_time_is_up() == -1) {
-      printf("oss is waiting to generate fork new child process\n");
+      fprintf(stderr, "oss is waiting to generate fork new child process\n");
       increment_clock();
 
       continue;
     }
 
-    // print the output table every 20 processes
-    if(resource_table->total_processes == 20 || resource_table->total_processes == 40) {
-      print_output_table();
-    }
-    
     // before forking, check if current active processes < 18
     // IF >= 18, report this, increment the clock, and continue the loop
     if(resource_table->current_processes >= MAX_PROCESSES_RUNNING) {
@@ -247,11 +243,13 @@ int main(int argc, char*argv[]) {
 
     printf("It is time to fork a child!\n");
 
+    resource_table->total_processes++;
+
     // increment 'current_processes' when forked, decrement it when child finishes
     pid_t child_pid = fork();
 
     if (child_pid == -1) {
-      perror("oss: Error: Failed to fork a child process\n");
+      perror("oss: Error: Failed to fork a child process");
       cleanup();
       return -1;
     }
@@ -282,7 +280,7 @@ int main(int argc, char*argv[]) {
 
       int pid_length = snprintf( NULL, 0, "%d", shmid );
       char* pid_str = malloc( pid_length + 1 );
-      snprintf( pid_str, pid_length + 1, "%d", shmid );
+      snprintf( pid_str, pid_length + 1, "%d", pid);
 
       // execl
       execl("./user", "./user", process_b_str, shmid_str, pid_str, (char *) NULL); // 1 arg: pass shmid
@@ -291,168 +289,186 @@ int main(int argc, char*argv[]) {
       exit(0);
     }
     else {
-      // in parent
-      resource_table->current_processes++;
-      resource_table->total_processes++;
-
-      // setup message receiver
-      int msg_size = msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 0, 0);
-      if(msg_size == -1) {
-        perror("oss: Error: Could not receive message from child\n");
-        cleanup();
-        return 1;
-      }
-
-      // Parse Message
-      int request_process;
-      int request_type; // 0 is for consume, 1 is for release
-      int resource_index;
-      int resource_value;
-      int resource_time_sec;
-      int resource_time_ns;
-      char *request_process_str = strtok(mymsg.mtext, "-");
-      char *resource_type_str = strtok(NULL, "-");
-      char *resource_index_str = strtok(NULL, "-");
-      char *resource_value_str = strtok(NULL, "-");
-      char *resource_time_sec_str = strtok(NULL, "-");
-      char *resource_time_ns_str = strtok(NULL, "-");
-
-      // if(resource_index_str == NULL || resource_value_str == NULL || resource_type_str == NULL) {
-      //   perror("oss: Error: Could not parse message from child");
-      //   cleanup();
-      //   return 1;
-      // }
-
-      request_process = atoi(request_process_str);
-      request_type = atoi(resource_type_str);
-      resource_index = atoi(resource_index_str);
-      resource_value = atoi(resource_value_str);
-      resource_time_sec = atoi(resource_time_sec_str);
-      resource_time_ns = atoi(resource_time_ns_str);
-
-      // print index and value
-      printf("request pid: %d\n", request_process);
-      printf("resource type: %d\n", request_type);
-      printf("resource index: %d\n", resource_index);
-      printf("resource value: %d\n", resource_value);
-      printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
-
-      // log info to file
-      char results_msg[MAX_MSG_SIZE];
-      if(request_type == 0) { // is a request
-        snprintf(results_msg, sizeof(results_msg), "Master has detected Process %d requesting %s at time: %d:%d", request_process, resource_table->resources[resource_index].name, resource_time_sec, resource_time_ns);
-        logmsg(results_msg);
-
-        // check if resource is available by running deadlock detection
-        printf("running deadlock detection...\n");
-
-
-        char results_msg_deadlock[MAX_MSG_SIZE];
-        snprintf(results_msg_deadlock, sizeof(results_msg_deadlock), "Master running deadlock detection at time %d:%d", resource_table->clock.sec, resource_table->clock.ns);
-        logmsg(results_msg_deadlock);
-
-        int is_unsafe = 0; // mocking result for now
-
-        // log if unsuccessful state change
-        if(is_unsafe == 1) {
-          // TODO: get real data, replace the mocks with it
-          logmsg("\tP1, P2, P3 deadlocked");
-          logmsg("\tUnsafe state after granting request; request not granted");
-          logmsg("\tP1 added to wait queue, waiting for R4");
-        }
-        // log results if safe
-        else {
-          char results_msg_3[MAX_MSG_SIZE];
-          // log that it has been released if successful
-          logmsg("\tSafe state after granting request");
-          snprintf(results_msg_3, sizeof(results_msg_3), "\tMaster granting Process %d request %s at time %d:%d", request_process, resource_table->resources[resource_index].name, resource_time_sec, resource_time_ns);
-          logmsg(results_msg_3);
-        }
-      }
-      else if(request_type == 1) {
-        snprintf(results_msg, sizeof(results_msg), "Master has acknowledged Process %d releasing %s at time: %d:%d", request_process, resource_table->resources[resource_index].name, resource_time_sec, resource_time_ns);
-        logmsg(results_msg);
-
-        // release the resource
-
-
-        // log that it has been released
-        char results_msg_2[MAX_MSG_SIZE];
-        snprintf(results_msg_2, sizeof(results_msg_2), "Master has released %s at time: %d:%d", resource_table->resources[resource_index].name, resource_time_sec, resource_time_ns);
-        logmsg(results_msg_2);
-      }
-      else if(request_type == 2) {
-        // is terminating. release all resources, then reset resource_table
-        char results_msg_terminate[MAX_MSG_SIZE];
-        snprintf(results_msg_terminate, sizeof(results_msg_terminate), "Process %d terminated at time %d:%d", request_process, resource_time_sec, resource_time_ns);
-        logmsg(results_msg_terminate);
-        
-        // log which resources freed
-        char results_msg_terminate_release[MAX_MSG_SIZE];
-        snprintf(results_msg_terminate_release, sizeof(results_msg_terminate_release), "\tResources Released: ");
-        for(int res_index=0; res_index<RESOURCES_DEFAULT; res_index++) {
-          // if the index 'res_index' is found in the array of indexes in the process's resource array, then log it, then clear it
-          if(found_in_resource_array(res_index, request_process) == 1) {
-            // log it
-            snprintf(results_msg_terminate_release, sizeof(results_msg_terminate_release), "R%d:%d, ", resource_table->processes[request_process].resources[res_index].index, resource_table->processes[request_process].resources[res_index].allocation);
-          }
-        }
-
-        logmsg(results_msg_terminate_release);
-
-        // free pid
-        freePid(request_process);
-      }
-
-
       // if it has the resources available AND if it is safe
         // check resource descriptor
 
 
       // can write message to logfile
 
-      pid_t wpid = wait(NULL);
-      if(wpid == -1) {
-        perror("oss: Error: Failed to wait for child");
-        cleanup();
-        return 1;
-      }
-
-      
-
-      // parent waits inside loop for child to finish
-      // int status;
-      // pid_t wpid = waitpid(child_pid, &status, WNOHANG);
-      // fprintf(stderr, "wpid: %d\n", wpid);
-      // if (wpid == -1) {
+      // pid_t wpid = wait(NULL);
+      // if(wpid == -1) {
       //   perror("oss: Error: Failed to wait for child");
       //   cleanup();
       //   return 1;
       // }
-      // else if(wpid == 0) {
-      //   // child is still running
-      //   fprintf(stderr, "child is still running\n");
-      // }
-      // else {
-      //   // child has finished
-      //   fprintf(stderr, "A child has finished\n");
-      //   resource_table->current_processes--; // when the process as finished
-      // }
-    }
 
-    fprintf(stderr, "A child has finished\n");
-    resource_table->current_processes--;
+      // fprintf(stderr, "A child has finished\n");
+      // resource_table->current_processes--;
+      
+
+      // parent waits inside loop for child to finish
+      int status;
+      pid_t wpid = waitpid(child_pid, &status, WNOHANG);
+      fprintf(stderr, "\nwpid: %d\n\n", wpid);
+      fprintf(stderr, "\nstatus: %d\n\n", status);
+      if (wpid == -1) {
+        perror("oss: Error: Failed to wait for child");
+        cleanup();
+        return 1;
+      }
+      else if(wpid == 0) {
+        // child is still running. in parent
+        fprintf(stderr, "child is still running\n");
+
+        // setup to receive messages
+        resource_table->current_processes++;
+        // resource_table->total_processes++;
+
+        // setup message receiver
+        int msg_size = msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 0, 0);
+        if(msg_size == -1) {
+          perror("oss: Error: Could not receive message from child\n");
+          cleanup();
+          return 1;
+        }
+
+        // Parse Message
+        int request_process;
+        int request_type; // 0 is for consume, 1 is for release
+        int resource_index;
+        int resource_value;
+        int resource_time_sec;
+        int resource_time_ns;
+
+        char *request_process_str = strtok(mymsg.mtext, "-");
+        char *resource_type_str = strtok(NULL, "-");
+
+        request_process = atoi(request_process_str);
+        request_type = atoi(resource_type_str);
+
+        printf("request pid: %d\n", request_process);
+        printf("resource type: %d\n", request_type);
+
+        // log info to file
+        char results_msg[MAX_MSG_SIZE];
+        if(request_type == 1) { // is a request
+          fprintf(stderr, "\n\nReceived Request\n");
+          
+          char *resource_index_str = strtok(NULL, "-");
+          char *resource_value_str = strtok(NULL, "-");
+          char *resource_time_sec_str = strtok(NULL, "-");
+          char *resource_time_ns_str = strtok(NULL, "-");
+
+          resource_index = atoi(resource_index_str);
+          resource_value = atoi(resource_value_str);
+          resource_time_sec = atoi(resource_time_sec_str);
+          resource_time_ns = atoi(resource_time_ns_str);
+
+          // print index and value
+          printf("resource index: %d\n", resource_index);
+          printf("resource value: %d\n", resource_value);
+          printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
+
+          snprintf(results_msg, sizeof(results_msg), "Master has detected Process %d requesting R%d at time: %d:%d", request_process, resource_index, resource_time_sec, resource_time_ns);
+          logmsg(results_msg);
+
+          // check if resource is available by running deadlock detection
+          printf("running deadlock detection...\n");
+
+
+          char results_msg_deadlock[MAX_MSG_SIZE];
+          snprintf(results_msg_deadlock, sizeof(results_msg_deadlock), "Master running deadlock detection at time %d:%d", resource_table->clock.sec, resource_table->clock.ns);
+          logmsg(results_msg_deadlock);
+
+          int is_unsafe = 0; // mocking result for now
+
+          // log if unsuccessful state change
+          if(is_unsafe == 1) {
+            // TODO: get real data, replace the mocks with it
+            logmsg("\tP1, P2, P3 deadlocked");
+            logmsg("\tUnsafe state after granting request; request not granted");
+            logmsg("\tP1 added to wait queue, waiting for R4");
+          }
+          // log results if safe
+          else {
+            char results_msg_3[MAX_MSG_SIZE];
+            // log that it has been released if successful
+            logmsg("\tSafe state after granting request");
+            snprintf(results_msg_3, sizeof(results_msg_3), "\tMaster granting Process %d resource R%d at time %d:%d", request_process, resource_index, resource_time_sec, resource_time_ns);
+            logmsg(results_msg_3);
+
+            // increase # of granted requests
+            resource_table->granted_requests++;
+            if(resource_table->granted_requests % 20 == 0) {
+              print_current_resources();
+            }
+          }
+        }
+        else if(request_type == 2) {
+          fprintf(stderr, "\n\nReceived Release\n");
+          char *resource_index_str = strtok(NULL, "-");
+          char *resource_value_str = strtok(NULL, "-");
+          char *resource_time_sec_str = strtok(NULL, "-");
+          char *resource_time_ns_str = strtok(NULL, "-");
+
+          resource_index = atoi(resource_index_str);
+          resource_value = atoi(resource_value_str);
+          resource_time_sec = atoi(resource_time_sec_str);
+          resource_time_ns = atoi(resource_time_ns_str);
+
+          // print index and value
+          printf("resource index: %d\n", resource_index);
+          printf("resource value: %d\n", resource_value);
+          printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
+
+          snprintf(results_msg, sizeof(results_msg), "Master has acknowledged P%d releasing R%d at time: %d:%d", request_process, resource_index, resource_time_sec, resource_time_ns);
+          logmsg(results_msg);
+
+          // release the resource
+          release_process_resource(request_process, resource_index, resource_value);
+
+          // log that it has been released
+          char results_msg_2[MAX_MSG_SIZE];
+          snprintf(results_msg_2, sizeof(results_msg_2), "Master has released R%d at time: %d:%d", resource_index, resource_time_sec, resource_time_ns);
+          logmsg(results_msg_2);
+        }
+        else if(request_type == 3) {
+          fprintf(stderr, "\n\nReceived Termination\n");
+          // is terminating. release all resources, then reset resource_table
+          char results_msg_terminate[MAX_MSG_SIZE];
+          snprintf(results_msg_terminate, sizeof(results_msg_terminate), "P%d terminated at time %d:%d", request_process, resource_time_sec, resource_time_ns);
+          logmsg(results_msg_terminate);
+          
+          // log which resources freed
+          char results_msg_terminate_release[MAX_MSG_SIZE];
+          snprintf(results_msg_terminate_release, sizeof(results_msg_terminate_release), "\tResources Released: ");
+          for(int res_index=0; res_index<RESOURCES_DEFAULT; res_index++) {
+            // if the index 'res_index' is found in the array of indexes in the process's resource array, then log it, then clear it
+            if(found_in_resource_array(res_index, request_process) == 1) {
+              // log it
+              snprintf(results_msg_terminate_release, sizeof(results_msg_terminate_release), "R%d:%d, ", resource_table->processes[request_process].resources[res_index].index, resource_table->processes[request_process].resources[res_index].allocation);
+            }
+          }
+
+          logmsg(results_msg_terminate_release);
+
+          // free pid
+          freePid(request_process);
+          release_process(request_process); // its pid
+          // resource_table->total_processes++;
+        }
+      }
+      else {
+        // child has finished
+        fprintf(stderr, "A child has finished\n");
+        resource_table->current_processes--; // when the process as finished
+      }
+    }
 
     printf("new # total processes: %d, new # active processes: %d\n", resource_table->total_processes, resource_table->current_processes);
 
-    // increment in cs
-
-    // print the current system resources
-    print_resources(resource_table);
-    
-
     time_diff = increment_clock();
-    sleep(1);
+    sleep(1); // to debug
   }
 
   // Wait for all children to finish, after the main loop is complete
@@ -558,7 +574,7 @@ void generate_report() {
   return;
 }
 
-void print_output_table() {
+void print_current_resources() {
   // prints a table to logfile showing the current # of resources allocated to each process
   // Example:
   //    R0  R1  R3  R4  ...
@@ -584,7 +600,27 @@ void print_output_table() {
   // get information to log
   // --> mocking for now
   fprintf(fp, "Current System Resources:\n");
-  fprintf(fp, "Printing output table...\n");
+  
+  // print headers
+  for(int i=0; i<RESOURCES_DEFAULT; i++) {
+    fprintf(fp, "\tR%d", i);
+  }
+
+  // print processes and their values for the resource
+  for(int i=0; i<MAX_PROCESSES_RUNNING; i++) {
+    fprintf(fp, "P%d", i);
+
+    Process found_process = get_process_by_pid(i);
+
+    // print each of the process's resource allocations
+    for(int res_index=0; res_index<RESOURCES_DEFAULT; res_index++) {
+      if(found_process.resources[res_index].index == -1)
+        fprintf(fp, "\t%d", 0);
+      else
+        fprintf(fp, "\t%d", found_process.resources[res_index].allocation);
+    }
+  }
+
   fclose(fp);
   return;
 }

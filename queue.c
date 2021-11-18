@@ -73,10 +73,8 @@ int msgwrite(void *buf, int len, int msg_type, int queueid) {     /* output buff
 
   mymsg->mtype = msg_type; // 1 or 2
 
-  fprintf(stderr, "sending timeslice\n");
-
   if (msgsnd(queueid, mymsg, len, 0) == -1) {
-    perror("oss: Error: Could not send the message\n");
+    perror("oss: Error: Could not send the message");
     error = errno;
   }
 

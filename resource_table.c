@@ -88,31 +88,38 @@ Process init_process() {
   return new_process;
 }
 
-void print_resources() {
-  printf("\nCurrent System Resources:\n");
-  printf("#, name, shareable?, n_resources\n");
-  for(int i=0; i<RESOURCES_DEFAULT; i++) {
-    printf("Resource #%d: %s, %d, %d\n", i, resource_table->resources[i].name, resource_table->resources[i].shareable, resource_table->resources[i].n_resources);
-  }
-  printf("\n");
+// void print_current_resources() {
+//   printf("\nPrinting Current System Resources to logfile... %d current processes\n\n", resource_table->current_processes);
+  
+  
+//   // now, also print to logfile
+//   FILE *logfile = fopen("oss.log", "a+");
+//   if(logfile == NULL) {
+//     perror("oss: Error: could not open logfile");
+//     return;
+//   }
 
-  // now, also print to logfile
-  FILE *logfile = fopen("oss.log", "a+");
-  fprintf(logfile, "\nCurrent System Resources:\n");
-  // print all resource names
-  for(int i=0; i<RESOURCES_DEFAULT; i++) {
-    fprintf(logfile, "\t%s", resource_table->resources[i].name);
-  }
-  // print the rows of the resources for each process
-  for(int i=0; i<resource_table->total_processes; i++) {
-    fprintf(logfile, "\nP%d", i);
+//   fprintf(logfile, "\nCurrent System Resources:\n");
 
-    // for each process, print its resources allocated
-    for(int j=0; j<RESOURCES_DEFAULT; j++) {
-      fprintf(logfile, "\t%d", resource_table->processes[i].resources[j].allocation);
-    }
-  }
-}
+//   // print all resource names in header row
+//   for(int i=0; i<RESOURCES_DEFAULT; i++) {
+//     fprintf(logfile, "\tR%d", i);
+//   }
+//   fprintf(logfile, "\n");
+
+//   // print the rows of the resources for each process
+//   for(int i=0; i<resource_table->current_processes; i++) {
+//     fprintf(logfile, "\nP%d", i);
+
+//     // for each process, print its resources allocated
+//     for(int j=0; j<RESOURCES_DEFAULT; j++) {
+//       fprintf(logfile, "\t%d", resource_table->processes[i].resources[j].allocation);
+//     }
+//   }
+//   fprintf(logfile, "\n");
+
+//   fclose(logfile);
+// }
 
 // function implementations to work with process table
 Clock increment_clock_round() {
@@ -193,3 +200,46 @@ int release(int index) {
   return 0;
 }
 
+Process get_process_by_pid(int pid) {
+  for(int i=0; i<MAX_PROCESSES_RUNNING; i++) {
+    if(resource_table->processes[i].pid == pid)
+      return resource_table->processes[i];
+  }
+  printf("oss: Warning: No process matching the id %d was found\n", pid);
+  return resource_table->processes[pid];
+}
+
+void release_process(int pid) {
+  if(pid == -1) {
+    fprintf(stderr, "oss: Warning: cannot reset process with pid of -1\n");
+    return;
+  }
+
+  for(int i=0; i<MAX_PROCESSES_RUNNING; i++) {
+    if(resource_table->processes[i].pid == pid) {
+      Process new_process = init_process();
+      resource_table->processes[i] = new_process;
+    }
+  }
+}
+
+void release_process_resource(int pid, int resource_index, int resource_allocation) {
+  if(pid == -1) {
+    fprintf(stderr, "oss: Warning: cannot reset process resource with pid of -1\n");
+    return;
+  }
+
+  for(int i=0; i<MAX_PROCESSES_RUNNING; i++) {
+    if(resource_table->processes[i].pid == pid) {
+      int current_allocation = resource_table->processes[i].resources[resource_index].allocation;
+      if(current_allocation - resource_allocation <= 0) {
+        resource_table->processes[i].resources[resource_index].allocation = 0;
+        resource_table->processes[i].resources[resource_index].index = -1;
+      }
+      else
+        resource_table->processes[i].resources[resource_index].allocation -= resource_allocation;
+
+      return;
+    }
+  }
+}

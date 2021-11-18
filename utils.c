@@ -2,6 +2,7 @@
 
 
 int getRandom(int upper) {
+  if(upper <= 0) return 0;
   // get number from [0, upper)
   int randNum = rand() % upper;
   return randNum;

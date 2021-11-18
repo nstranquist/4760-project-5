@@ -15,7 +15,11 @@
 
 #define MAX_MSG_SIZE 4096
 
-#define RESOURCES_DEFAULT 10
+#define RESOURCES_DEFAULT 10 // 18
+
+#define MAXIMUM_CLAIMS 10
+
+#define MS_TO_US 1000 // convert MS to US for usleep() function in user.c
 
 typedef struct {
   int sec;
