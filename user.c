@@ -23,10 +23,10 @@ int shmid;
 int pid;
 // semaphore structures here, if needed
 
-mymsg_t mymsg;
 
 int checkArrayForInteger(int value, int *arr, int arr_length);
 char* format_string(char*msg, int data);
+int is_diff_gt_second(Clock start, Clock current);
 
 int main(int argc, char *argv[]) {
   printf("In user!\n");
@@ -86,6 +86,8 @@ int main(int argc, char *argv[]) {
   while(should_terminate != 1) {
     printf("\nUser.c in should_terminate loop!\n");
 
+    mymsg_t mymsg;
+
     // AFTER BEING SCHEDULED...
     // generate random from [0, B], where B is the upper bound for when a process should request a new resource
     int next_request = getRandom(b + 1);
@@ -106,22 +108,22 @@ int main(int argc, char *argv[]) {
 
     // Decide if it should request or release
     int should_request = getRandom(5);
+
+    // Request
     if(should_request > 1) { // buf_term, MAX_MSG_SIZE, msg_type, resource_table->queueid
-      printf("will request resources\n");
-    
       // Create Request for Resources
       int resource_index_requested = getRandom(RESOURCES_DEFAULT); // index of resource requested
-      printf("requesting index: %d\n", resource_index_requested);
+      // printf("requesting index: %d\n", resource_index_requested);
       int n_resources = resource_table->resources[resource_index_requested].n_resources;
-      printf("n resources: %d\n", n_resources);
+      // printf("n resources: %d\n", n_resources);
       int requested_resources = getRandom(n_resources) + 1;
-      printf("requested res amount: %d\n", requested_resources);
+      // printf("requested res amount: %d\n", requested_resources);
 
       char *buf;
       int msg_type = 1; // 1 for request
       asprintf(&buf, "%d-%d-%d-%d-%d-%d-", pid, msg_type, resource_index_requested, requested_resources, end_run.sec, end_run.ns);
 
-      fprintf(stderr, "about to send message: %s\n", buf);
+      fprintf(stderr, "user: about to send message (request): %s\n", buf);
 
       // write to message buf: resource_index_requested, resource_request_amount
       // int buf_size = strlen(buf);
@@ -133,13 +135,13 @@ int main(int argc, char *argv[]) {
       }
 
       // wait to receive message (see if approved)
-      int msg_size = msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 0, 0);
+      int msg_size = msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 1, 0);
       if(msg_size == -1) {
         perror("oss: user: Error: Could not receive message from parent\n");
         return 0;
       }
       
-      printf("got msg from parent!\n");
+      printf("user: Request: got msg from parent!\n");
 
       // check if approved
       int request_approved;
@@ -153,21 +155,21 @@ int main(int argc, char *argv[]) {
         printf("request for resources approved (got 1)\n");
       }
     }
+    // Release
     else {
-      printf("will release resources\n");
       // Create Release for resources
       int resource_index_requested = getRandom(RESOURCES_DEFAULT); // index of resource requested
-      printf("requesting index: %d\n", resource_index_requested);
+      // printf("requesting index: %d\n", resource_index_requested);
       int n_resources = resource_table->resources[resource_index_requested].n_resources;
-      printf("n resources: %d\n", n_resources);
+      // printf("n resources: %d\n", n_resources);
       int requested_resources = getRandom(n_resources) + 1;
-      printf("requested res amount: %d\n", requested_resources);
+      // printf("requested res amount: %d\n", requested_resources);
 
       char *buf;
       int msg_type = 2; // 2 for release
       asprintf(&buf, "%d-%d-%d-%d-%d-%d-", pid, msg_type, resource_index_requested, requested_resources, end_run.sec, end_run.ns);
 
-      fprintf(stderr, "about to send message: %s\n", buf);
+      fprintf(stderr, "user: about to send message (release): %s\n", buf);
 
       // write to message buf: resource_index_requested, resource_request_amount
       // int buf_size = strlen(buf);
@@ -177,6 +179,14 @@ int main(int argc, char *argv[]) {
         exit(0);
         return 0;
       }
+
+      int msg_size = msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 2, 0);
+      if(msg_size == -1) {
+        perror("oss: user: Error: Could not receive message from parent\n");
+        return 0;
+      }
+      
+      printf("user: Release: got msg from parent: %s\n", mymsg.mtext);
     }
 
     // schedule to ask for the resources
@@ -187,7 +197,12 @@ int main(int argc, char *argv[]) {
 
 
     // the process checks if it should terminate in random intervals [0,250] milliseconds
-    int next_termination = getRandom(251); // 0-250
+    int next_termination;
+    if(is_diff_gt_second(begin_run, end_run) == 1)
+      next_termination = getRandom(251); // 0-250
+    else
+      next_termination = 1; // dont terminate if < 1 sec has ran
+
     if(next_termination > 200) {
       // should terminate
       fprintf(stderr, "terminating child\n");
@@ -202,8 +217,10 @@ int main(int argc, char *argv[]) {
       }
       else
         end_run.ns += next_termination_ns;
-      }
-  }
+    }
+  } // END While
+
+  
   // IF it should terminate,
     // - release all resources allocated to it by communicating to oss that it is releasing the resources
     // - do this only after it has run for at least 1 second
@@ -214,6 +231,8 @@ int main(int argc, char *argv[]) {
   // send message to oss
   int msg_type = 3; // 3 for termination
   char *buf_term;
+
+  fprintf(stderr, "(user) Ready to print message to terminate\n");
 
   // Message: PID-TYPE-SEC-NS
   asprintf(&buf_term, "%d-%d-%d-%d-", pid, msg_type, end_run.sec, end_run.ns);
@@ -248,4 +267,22 @@ char* format_string(char*msg, int data) {
     free(temp);
     return buf;
   }
+}
+
+// return 1 for true, 0 for false
+int is_diff_gt_second(Clock start, Clock current) {
+  int diff_sec = current.sec - start.sec;
+  if(diff_sec > 1)
+    return 1;
+  if(diff_sec == 0)
+    return 0;
+
+  int diff_ns = current.ns - start.ns;
+  // if diff_sec == 1, we need to see if there's enough on both sides to make NS > NANOSECONDS
+  int diff_ns_start = NANOSECONDS - start.ns;
+  
+  if(diff_ns_start + current.ns > NANOSECONDS)
+    return 1;
+
+  return 0;
 }

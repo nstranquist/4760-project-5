@@ -307,8 +307,8 @@ int main(int argc, char*argv[]) {
       // parent waits inside loop for child to finish
       int status;
       pid_t wpid = waitpid(child_pid, &status, WNOHANG);
-      fprintf(stderr, "\nwpid: %d\n", wpid);
-      fprintf(stderr, "status: %d\n\n", status);
+      // fprintf(stderr, "\nwpid: %d\n", wpid);
+      // fprintf(stderr, "status: %d\n\n", status);
       if (wpid == -1) {
         perror("oss: Error: Failed to wait for child");
         cleanup();
@@ -324,7 +324,7 @@ int main(int argc, char*argv[]) {
 
         int is_terminate = 0;
         while(is_terminate == 0) {
-          printf("(oss): Is beginning of terminate loop!\n");
+          printf("\n(oss): Is beginning of terminate loop!\n");
           mymsg_t mymsg; // for queue
           
           // setup message receiver
@@ -334,6 +334,8 @@ int main(int argc, char*argv[]) {
             cleanup();
             return 1;
           }
+
+          fprintf(stderr, "after rcv\n");
 
           // Parse Message
           int request_process;
@@ -345,6 +347,8 @@ int main(int argc, char*argv[]) {
 
           char *request_process_str = strtok(mymsg.mtext, "-");
           char *resource_type_str = strtok(NULL, "-");
+
+          printf("req pid: %s, req type: %s\n", request_process_str, resource_type_str);
 
           request_process = atoi(request_process_str);
           request_type = atoi(resource_type_str);
@@ -368,9 +372,11 @@ int main(int argc, char*argv[]) {
             resource_time_ns = atoi(resource_time_ns_str);
 
             // print index and value
-            printf("resource index: %d\n", resource_index);
-            printf("resource value: %d\n", resource_value);
-            printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
+            // printf("resource index: %d\n", resource_index);
+            // printf("resource value: %d\n", resource_value);
+            // printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
+
+            add_time_to_clock(resource_time_sec, resource_time_ns);
 
             snprintf(results_msg, sizeof(results_msg), "Master has detected Process %d requesting R%d at time: %d:%d", request_process, resource_index, resource_time_sec, resource_time_ns);
             logmsg(results_msg);
@@ -398,6 +404,7 @@ int main(int argc, char*argv[]) {
               asprintf(&buf_res, "%d-", msg_type);
 
               // write message back to child
+              fprintf(stderr, "oss: Writing Message to User\n");
               if(msgwrite(buf_res, MAX_MSG_SIZE, msg_type, resource_table->queueid) == -1) {
                 perror("oss: Error: Could not write message back to child");
                 return 1;
@@ -408,7 +415,7 @@ int main(int argc, char*argv[]) {
               char results_msg_3[MAX_MSG_SIZE];
               // log that it has been released if successful
               logmsg("\tSafe state after granting request");
-              snprintf(results_msg_3, sizeof(results_msg_3), "\tMaster granting Process %d resource R%d at time %d:%d", request_process, resource_index, resource_time_sec, resource_time_ns);
+              snprintf(results_msg_3, sizeof(results_msg_3), "\tMaster granting Process %d resource R%d at time %d:%d", request_process, resource_index, resource_table->clock.sec, resource_table->clock.ns);
               logmsg(results_msg_3);
 
               // increase # of granted requests
@@ -422,6 +429,7 @@ int main(int argc, char*argv[]) {
               asprintf(&buf_res, "%d-", msg_type);
 
               // write message back to child
+              fprintf(stderr, "oss: Writing Message to User\n");
               if(msgwrite(buf_res, MAX_MSG_SIZE, msg_type, resource_table->queueid) == -1) {
                 perror("oss: Error: Could not write message back to child");
                 return 1;
@@ -441,9 +449,11 @@ int main(int argc, char*argv[]) {
             resource_time_ns = atoi(resource_time_ns_str);
 
             // print index and value
-            printf("resource index: %d\n", resource_index);
-            printf("resource value: %d\n", resource_value);
-            printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
+            // printf("resource index: %d\n", resource_index);
+            // printf("resource value: %d\n", resource_value);
+            // printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
+
+            add_time_to_clock(resource_time_sec, resource_time_ns);
 
             snprintf(results_msg, sizeof(results_msg), "Master has acknowledged P%d releasing R%d at time: %d:%d", request_process, resource_index, resource_time_sec, resource_time_ns);
             logmsg(results_msg);
@@ -455,6 +465,17 @@ int main(int argc, char*argv[]) {
             char results_msg_2[MAX_MSG_SIZE];
             snprintf(results_msg_2, sizeof(results_msg_2), "Master has released R%d at time: %d:%d", resource_index, resource_time_sec, resource_time_ns);
             logmsg(results_msg_2);
+
+            int msg_type = 2;
+            char *buf_res;
+            asprintf(&buf_res, "Resources Released");
+
+            // write message back to child
+            fprintf(stderr, "oss: Writing Message to User\n");
+            if(msgwrite(buf_res, MAX_MSG_SIZE, msg_type, resource_table->queueid) == -1) {
+              perror("oss: Error: Could not write message back to child");
+              return 1;
+            }
           }
           else if(request_type == 3) {
             is_terminate = 1;
@@ -465,8 +486,10 @@ int main(int argc, char*argv[]) {
             resource_time_sec = atoi(resource_time_sec_str);
             resource_time_ns = atoi(resource_time_ns_str);
 
+            add_time_to_clock(resource_time_sec, resource_time_ns);
+
             // print index and value
-            printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
+            // printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
 
             fprintf(stderr, "\nReceived Termination\n");
             // is terminating. release all resources, then reset resource_table
@@ -492,8 +515,6 @@ int main(int argc, char*argv[]) {
             release_process(request_process); // its pid
             // resource_table->total_processes++;
           }
-          sleep(1);
-          printf("\nis at end of is terminate loop\n\n");
         }
       }
       else {
