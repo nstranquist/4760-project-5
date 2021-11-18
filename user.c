@@ -82,10 +82,20 @@ int main(int argc, char *argv[]) {
   printf("requested res amount: %d\n", requested_resources);
   // int resource_request_amount = getRandom(RESOURCES_DEFAULT-1) + 1;
   // printf("# requested: %d\n", resource_request_amount);
+  int pid = getpid();
 
+  buf = format_string(buf, pid);
+  strcat(buf, "-");
+  buf = format_string(buf, 0); // 0 is for request type
+  strcat(buf, "-");
   buf = format_string(buf, resource_index_requested);
   strcat(buf, "-");
   buf = format_string(buf, requested_resources);
+  strcat(buf, "-");
+  // add time in sec and ns
+  buf = format_string(buf, resource_table->clock.sec);
+  strcat(buf, "-");
+  buf = format_string(buf, resource_table->clock.ns);
   strcat(buf, "-");
 
   fprintf(stderr, "about to send message\n");
@@ -149,7 +159,6 @@ char* format_string(char*msg, int data) {
     return "";
   } else {
     strcat(strcpy(buf, msg), temp);
-    printf("%s\n", buf);
     free(temp);
     return buf;
   }

@@ -278,27 +278,46 @@ int main(int argc, char*argv[]) {
       }
 
       // Parse Message
+      int request_process;
+      int request_type; // 0 is for consume, 1 is for release
       int resource_index;
       int resource_value;
-      char *resource_index_str = strtok(mymsg.mtext, "-");
+      int resource_time_sec;
+      int resource_time_ns;
+      char *request_process_str = strtok(mymsg.mtext, "-");
+      char *resource_type_str = strtok(NULL, "-");
+      char *resource_index_str = strtok(NULL, "-");
       char *resource_value_str = strtok(NULL, "-");
+      char *resource_time_sec_str = strtok(NULL, "-");
+      char *resource_time_ns_str = strtok(NULL, "-");
 
-      if(resource_index_str == NULL || resource_value_str == NULL) {
-        perror("oss: Error: Could not parse message from child\n");
-        cleanup();
-        return 1;
-      }
+      // if(resource_index_str == NULL || resource_value_str == NULL || resource_type_str == NULL) {
+      //   perror("oss: Error: Could not parse message from child");
+      //   cleanup();
+      //   return 1;
+      // }
 
+      request_process = atoi(request_process_str);
+      request_type = atoi(resource_type_str);
       resource_index = atoi(resource_index_str);
       resource_value = atoi(resource_value_str);
+      resource_time_sec = atoi(resource_time_sec_str);
+      resource_time_ns = atoi(resource_time_ns_str);
 
       // print index and value
+      printf("request pid: %d\n", request_process);
+      printf("resource type: %d\n", request_type);
       printf("resource index: %d\n", resource_index);
       printf("resource value: %d\n", resource_value);
+      printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
 
+      // log info to file
+      char results_msg[MAX_MSG_SIZE];
+      if(request_type == 0) { // is a request
+        snprintf(results_msg, sizeof(results_msg), "Master has detected Process %d requesting %s at time: %d:%d", request_process, resource_table->resources[resource_index].name, resource_time_sec, resource_time_ns);
+        logmsg(results_msg);
+      }
 
-      // printf("index: %d, msg: %s, pid: %d\n", mymsg, mymsg.mtext, mymsg.pid);
-      print_message(mymsg);
 
       // if it has the resources available AND if it is safe
         // check resource descriptor
