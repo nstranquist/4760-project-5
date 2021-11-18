@@ -393,7 +393,15 @@ int main(int argc, char*argv[]) {
               logmsg("\tP1 added to wait queue, waiting for R4");
 
               // wait until ready, then write message back to child
+              int msg_type = 2; // blocked
+              char *buf_res;
+              asprintf(&buf_res, "%d-", msg_type);
 
+              // write message back to child
+              if(msgwrite(buf_res, MAX_MSG_SIZE, msg_type, resource_table->queueid) == -1) {
+                perror("oss: Error: Could not write message back to child");
+                return 1;
+              }
             }
             // log results if safe
             else {
@@ -409,8 +417,15 @@ int main(int argc, char*argv[]) {
                 print_current_resources();
               }
 
+              int msg_type = 1; // 1 is approved, 2 is blocked
+              char *buf_res;
+              asprintf(&buf_res, "%d-", msg_type);
+
               // write message back to child
-              
+              if(msgwrite(buf_res, MAX_MSG_SIZE, msg_type, resource_table->queueid) == -1) {
+                perror("oss: Error: Could not write message back to child");
+                return 1;
+              }
             }
           }
           else if(request_type == 2) {
@@ -443,6 +458,16 @@ int main(int argc, char*argv[]) {
           }
           else if(request_type == 3) {
             is_terminate = 1;
+
+            char *resource_time_sec_str = strtok(NULL, "-");
+            char *resource_time_ns_str = strtok(NULL, "-");
+
+            resource_time_sec = atoi(resource_time_sec_str);
+            resource_time_ns = atoi(resource_time_ns_str);
+
+            // print index and value
+            printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
+
             fprintf(stderr, "\nReceived Termination\n");
             // is terminating. release all resources, then reset resource_table
             char results_msg_terminate[MAX_MSG_SIZE];

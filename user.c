@@ -35,7 +35,6 @@ int main(int argc, char *argv[]) {
 
   if(argc != 4) {
     perror("oss: user: Usage: `./user b s p`, where b is an integer and s is the shared memory id and p is the simulated pid\n");
-    // kill(getpid(), SIGCONT);
     return 0;
   }
   char *b_str = argv[1];
@@ -43,7 +42,6 @@ int main(int argc, char *argv[]) {
 
   if(!atoi(b_str)) {
     perror("oss: user: Error: paramter received for 'B' is not a number\n");
-    // kill(getpid(), SIGCONT);
     return 0;
   }
   int b = atoi(b_str);
@@ -66,7 +64,6 @@ int main(int argc, char *argv[]) {
     perror("oss: Error: Failed to attach to shared memory\n");
     if (shmctl(shmid, IPC_RMID, NULL) == -1)
       perror("oss: Error: Failed to remove memory segment\n");
-    // kill(getpid(), SIGCONT);;
     return 0;
   }
 
@@ -109,34 +106,7 @@ int main(int argc, char *argv[]) {
 
     // Decide if it should request or release
     int should_request = getRandom(5);
-    if(should_request < 1) {
-      printf("will release resources\n");
-      // Create Release for resources
-      int resource_index_requested = getRandom(RESOURCES_DEFAULT); // index of resource requested
-      printf("requesting index: %d\n", resource_index_requested);
-      int n_resources = resource_table->resources[resource_index_requested].n_resources;
-      printf("n resources: %d\n", n_resources);
-      int requested_resources = getRandom(n_resources) + 1;
-      printf("requested res amount: %d\n", requested_resources);
-
-      printf("next\n");
-      char *buf;
-      int msg_type = 2; // 2 for release
-      asprintf(&buf, "%d-%d-%d-%d-%d-%d-", pid, msg_type, resource_index_requested, requested_resources, end_run.sec, end_run.ns);
-
-      fprintf(stderr, "about to send message: %s\n", buf);
-
-      // write to message buf: resource_index_requested, resource_request_amount
-      // int buf_size = strlen(buf);
-
-      if((size = msgwrite(buf, MAX_MSG_SIZE, msg_type, resource_table->queueid)) == -1) {
-        perror("oss: user: Error: could not send message from user to oss");
-        exit(0);
-        // kill(getpid(), SIGCONT);
-        return 0;
-      }
-    }
-    else {
+    if(should_request > 1) { // buf_term, MAX_MSG_SIZE, msg_type, resource_table->queueid
       printf("will request resources\n");
     
       // Create Request for Resources
@@ -159,7 +129,6 @@ int main(int argc, char *argv[]) {
       if((size = msgwrite(buf, MAX_MSG_SIZE, msg_type, resource_table->queueid)) == -1) {
         perror("oss: user: Error: could not send message from user to oss");
         exit(0);
-        // kill(getpid(), SIGCONT);
         return 0;
       }
 
@@ -167,7 +136,6 @@ int main(int argc, char *argv[]) {
       int msg_size = msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 0, 0);
       if(msg_size == -1) {
         perror("oss: user: Error: Could not receive message from parent\n");
-        // kill(getpid(), SIGCONT);
         return 0;
       }
       
@@ -183,6 +151,31 @@ int main(int argc, char *argv[]) {
       }
       else {
         printf("request for resources approved (got 1)\n");
+      }
+    }
+    else {
+      printf("will release resources\n");
+      // Create Release for resources
+      int resource_index_requested = getRandom(RESOURCES_DEFAULT); // index of resource requested
+      printf("requesting index: %d\n", resource_index_requested);
+      int n_resources = resource_table->resources[resource_index_requested].n_resources;
+      printf("n resources: %d\n", n_resources);
+      int requested_resources = getRandom(n_resources) + 1;
+      printf("requested res amount: %d\n", requested_resources);
+
+      char *buf;
+      int msg_type = 2; // 2 for release
+      asprintf(&buf, "%d-%d-%d-%d-%d-%d-", pid, msg_type, resource_index_requested, requested_resources, end_run.sec, end_run.ns);
+
+      fprintf(stderr, "about to send message: %s\n", buf);
+
+      // write to message buf: resource_index_requested, resource_request_amount
+      // int buf_size = strlen(buf);
+
+      if((size = msgwrite(buf, MAX_MSG_SIZE, msg_type, resource_table->queueid)) == -1) {
+        perror("oss: user: Error: could not send message from user to oss");
+        exit(0);
+        return 0;
       }
     }
 
@@ -220,27 +213,18 @@ int main(int argc, char *argv[]) {
 
   // send message to oss
   int msg_type = 3; // 3 for termination
-  char *buf_term = "";
+  char *buf_term;
 
   // Message: PID-TYPE-SEC-NS
-  buf_term = format_string(buf_term, pid);
-  strcat(buf_term, "-");
-  buf_term = format_string(buf_term, msg_type);
-  strcat(buf_term, "-");
-  buf_term = format_string(buf_term, end_run.sec);
-  strcat(buf_term, "-");
-  buf_term = format_string(buf_term, end_run.ns);
-  strcat(buf_term, "-");
+  asprintf(&buf_term, "%d-%d-%d-%d-", pid, msg_type, end_run.sec, end_run.ns);
 
   if((size = msgwrite(buf_term, MAX_MSG_SIZE, msg_type, resource_table->queueid)) == -1) {
     perror("oss: user: Error: could not send message from user to oss\n");
-    // kill(getpid(), SIGCONT);
     return 0;
   }
   else printf("Message to terminate sent successfully");
 
   fprintf(stderr, "user: Child is exiting\n");
-  // kill(getpid(), SIGCONT);
   return 0;
 }
 
