@@ -154,6 +154,12 @@ int main(int argc, char *argv[]) {
       else {
         printf("request for resources approved (got 1)\n");
       }
+
+      // finish by sending 1 more msg
+      char *buf_tmp;
+      msg_type = 6;
+      asprintf(&buf_tmp, "%d-%d-", pid, msg_type);
+      msgwrite(buf_tmp, MAX_MSG_SIZE, msg_type, resource_table->queueid);
     }
     // Release
     else {
@@ -187,6 +193,12 @@ int main(int argc, char *argv[]) {
       }
       
       printf("user: Release: got msg from parent: %s\n", mymsg.mtext);
+
+      // finish by sending 1 more msg
+      char *buf_tmp;
+      msg_type = 7;
+      asprintf(&buf_tmp, "%d-%d-", pid, msg_type);
+      msgwrite(buf_tmp, MAX_MSG_SIZE, msg_type, resource_table->queueid);
     }
 
     // schedule to ask for the resources

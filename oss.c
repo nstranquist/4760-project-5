@@ -412,6 +412,8 @@ int main(int argc, char*argv[]) {
                 perror("oss: Error: Could not write message back to child");
                 return 1;
               }
+
+              msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 10, 0); // for statuses
             }
             // log results if safe
             else {
@@ -438,6 +440,8 @@ int main(int argc, char*argv[]) {
                 perror("oss: Error: Could not write message back to child");
                 return 1;
               }
+
+              msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 6, 0); // for statuses
             }
           }
           else if(request_type == 2) {
@@ -480,6 +484,8 @@ int main(int argc, char*argv[]) {
               perror("oss: Error: Could not write message back to child");
               return 1;
             }
+
+            msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 7, 0); // for statuses
           }
           else if(request_type == 3) {
             is_terminate = 1;
@@ -672,6 +678,7 @@ void print_current_resources() {
   for(int i=0; i<RESOURCES_DEFAULT; i++) {
     fprintf(fp, "\tR%d", i);
   }
+  fprintf(fp, "\n");
 
   // print processes and their values for the resource
   for(int i=0; i<MAX_PROCESSES_RUNNING; i++) {
