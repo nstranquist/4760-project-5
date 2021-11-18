@@ -3,7 +3,7 @@
 
 #define MAX_SECONDS 50 // 5
 
-#define MAX_PROCESSES_TOTAL 1 // 40
+#define MAX_PROCESSES_TOTAL 18 // 40
 
 #define MAX_PROCESSES_RUNNING 18
 

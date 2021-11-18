@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
       }
 
       // wait to receive message (see if approved)
-      int msg_size = msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 1, 0);
+      int msg_size = msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 4, 0);
       if(msg_size == -1) {
         perror("oss: user: Error: Could not receive message from parent\n");
         return 0;
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
         return 0;
       }
 
-      int msg_size = msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 2, 0);
+      int msg_size = msgrcv(resource_table->queueid, &mymsg, MAX_MSG_SIZE, 5, 0);
       if(msg_size == -1) {
         perror("oss: user: Error: Could not receive message from parent\n");
         return 0;
@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
     }
   } // END While
 
-  
+
   // IF it should terminate,
     // - release all resources allocated to it by communicating to oss that it is releasing the resources
     // - do this only after it has run for at least 1 second

@@ -208,6 +208,8 @@ int main(int argc, char*argv[]) {
   initialize_resource_table();
   signal_sem(semid, semsignal, 1);
 
+  init_pids();
+
   // print_resources();
 
   // generate next time as cs
@@ -335,7 +337,7 @@ int main(int argc, char*argv[]) {
             return 1;
           }
 
-          fprintf(stderr, "after rcv\n");
+          fprintf(stderr, "after rcv. msg: %s\n", mymsg.mtext);
 
           // Parse Message
           int request_process;
@@ -399,9 +401,10 @@ int main(int argc, char*argv[]) {
               logmsg("\tP1 added to wait queue, waiting for R4");
 
               // wait until ready, then write message back to child
-              int msg_type = 2; // blocked
+              int msg_type = 4;
+              int deadlock_result = 2; // blocked
               char *buf_res;
-              asprintf(&buf_res, "%d-", msg_type);
+              asprintf(&buf_res, "%d-%d-", deadlock_result, msg_type);
 
               // write message back to child
               fprintf(stderr, "oss: Writing Message to User\n");
@@ -424,9 +427,10 @@ int main(int argc, char*argv[]) {
                 print_current_resources();
               }
 
-              int msg_type = 1; // 1 is approved, 2 is blocked
+              int msg_type = 4;
+              int deadlock_result = 1; // 1 is approved, 2 is blocked
               char *buf_res;
-              asprintf(&buf_res, "%d-", msg_type);
+              asprintf(&buf_res, "%d-%d-", deadlock_result, msg_type);
 
               // write message back to child
               fprintf(stderr, "oss: Writing Message to User\n");
@@ -466,9 +470,9 @@ int main(int argc, char*argv[]) {
             snprintf(results_msg_2, sizeof(results_msg_2), "Master has released R%d at time: %d:%d", resource_index, resource_time_sec, resource_time_ns);
             logmsg(results_msg_2);
 
-            int msg_type = 2;
+            int msg_type = 5;
             char *buf_res;
-            asprintf(&buf_res, "Resources Released");
+            asprintf(&buf_res, "%d-%d-Resources Released-", request_process, msg_type);
 
             // write message back to child
             fprintf(stderr, "oss: Writing Message to User\n");
@@ -628,7 +632,11 @@ void generate_report() {
   // - percentage of processes that got caught in a deadlock and had to be terminated, on average
 
   // --> mock for now
-  fprintf(fp, "Generating report info...\n");
+  fprintf(fp, "\nGenerating report info...\n");
+
+  // Fill in with the real report info
+
+
   fclose(fp);
   return;
 }
