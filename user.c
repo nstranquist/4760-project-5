@@ -20,6 +20,9 @@ int shmid;
 
 mymsg_t mymsg;
 
+int checkArrayForInteger(int value, int *arr, int arr_length);
+char* format_string(char*msg, int data);
+
 int main(int argc, char *argv[]) {
   printf("In user!\n");
 
@@ -68,13 +71,29 @@ int main(int argc, char *argv[]) {
   // what information is needed to communicate properly with oss?
   // what information is in a given resource descriptor?
   // send test message to oss
-  char *buf = "Hello from User";
-  int pid = getpid();
-  int msg_type = 1;
+  char *buf = "";
+
+  long msg_type = 1;
+  int resource_index_requested = getRandom(RESOURCES_DEFAULT); // index of resource requested
+  printf("requesting index: %d\n", resource_index_requested);
+  int n_resources = resource_table->resources[resource_index_requested].n_resources;
+  printf("n resources: %d\n", n_resources);
+  int requested_resources = getRandom(n_resources) + 1;
+  printf("requested res amount: %d\n", requested_resources);
+  // int resource_request_amount = getRandom(RESOURCES_DEFAULT-1) + 1;
+  // printf("# requested: %d\n", resource_request_amount);
+
+  buf = format_string(buf, resource_index_requested);
+  strcat(buf, "-");
+  buf = format_string(buf, requested_resources);
+  strcat(buf, "-");
 
   fprintf(stderr, "about to send message\n");
-  
-  if((size = msgwrite(buf, 100, msg_type, resource_table->queueid, pid, 0)) == -1) {
+
+  // write to message buf: resource_index_requested, resource_request_amount
+
+
+  if((size = msgwrite(buf, MAX_MSG_SIZE, msg_type, resource_table->queueid)) == -1) {
     perror("oss/user: Error: could not send message from user to oss\n");
     return 1;
   }
@@ -106,7 +125,32 @@ int main(int argc, char *argv[]) {
 
 
   // release the resources
-  // fprintf(stderr, "user: Child is exiting\n");
-  // exit(0);
+
+
+
+  fprintf(stderr, "user: Child is exiting\n");
   return 0;
+}
+
+
+int checkArrayForInteger(int value, int *arr, int arr_length) {
+  for(int i = 0; i<arr_length; i++) {
+    if(arr[i] == value)
+      return -1;
+  }
+  return 0;
+}
+
+char* format_string(char*msg, int data) {
+  char *temp;
+  char *buf;
+  if (asprintf(&temp, "%d", data) == -1) {
+    perror("oss: Warning: string format failed\n");
+    return "";
+  } else {
+    strcat(strcpy(buf, msg), temp);
+    printf("%s\n", buf);
+    free(temp);
+    return buf;
+  }
 }

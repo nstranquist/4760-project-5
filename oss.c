@@ -142,7 +142,7 @@ int main(int argc, char*argv[]) {
   srand(time(NULL));
 
   // allocate shared memory
-  shmid = shmget(IPC_PRIVATE, sizeof(ResourceTable), PERMS | 0666); // (struct ProcessTable)
+  shmid = shmget(IPC_PRIVATE, sizeof(ResourceTable), PERMS | 0666);
   if (shmid == -1) {
     perror("oss: Error: Failed to create shared memory segment for process table\n");
     return -1;
@@ -277,6 +277,27 @@ int main(int argc, char*argv[]) {
         return 1;
       }
 
+      // Parse Message
+      int resource_index;
+      int resource_value;
+      char *resource_index_str = strtok(mymsg.mtext, "-");
+      char *resource_value_str = strtok(NULL, "-");
+
+      if(resource_index_str == NULL || resource_value_str == NULL) {
+        perror("oss: Error: Could not parse message from child\n");
+        cleanup();
+        return 1;
+      }
+
+      resource_index = atoi(resource_index_str);
+      resource_value = atoi(resource_value_str);
+
+      // print index and value
+      printf("resource index: %d\n", resource_index);
+      printf("resource value: %d\n", resource_value);
+
+
+      // printf("index: %d, msg: %s, pid: %d\n", mymsg, mymsg.mtext, mymsg.pid);
       print_message(mymsg);
 
       // if it has the resources available AND if it is safe

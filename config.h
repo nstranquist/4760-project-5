@@ -3,7 +3,7 @@
 
 #define MAX_SECONDS 50 // 5
 
-#define MAX_PROCESSES_TOTAL 4 // 40
+#define MAX_PROCESSES_TOTAL 1 // 40
 
 #define MAX_PROCESSES_RUNNING 18
 
@@ -14,6 +14,8 @@
 #define LOGFILE_MAX_LINES 100000
 
 #define MAX_MSG_SIZE 4096
+
+#define RESOURCES_DEFAULT 10
 
 typedef struct {
   int sec;

@@ -1,3 +1,8 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <errno.h>
+#include "config.h"
 #include "deadlock_detection.h"
 
 /**
@@ -82,7 +87,9 @@ bool deadlock(const int *available, const int m, const int n, const int *request
  */
 void bankers_algorithm(const int *available, const int *request, int *allocation, int *need, const int i, int *p) {
   if(request[i] > need[i]) {
-    throw("Asked more than initial request");
+    fprintf(stderr, "oss: Process asked for more resources than initial request\n");
+    return;
+    // throw("Asked more than initial request");
   }
 
   if(request[i] <= available) {

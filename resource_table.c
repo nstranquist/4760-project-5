@@ -3,6 +3,35 @@
 
 ResourceTable *resource_table;
 
+const char alphabet[26][10] = {
+  "ResA",
+  "ResB",
+  "ResC",
+  "ResD",
+  "ResE",
+  "ResF",
+  "ResG",
+  "ResH",
+  "ResI",
+  "ResJ",
+  "ResK",
+  "ResL",
+  "ResM",
+  "ResN",
+  "ResO",
+  "ResP",
+  "ResQ",
+  "ResR",
+  "ResS",
+  "ResT",
+  "ResU",
+  "ResV",
+  "ResW",
+  "ResX",
+  "ResY",
+  "ResZ",
+};
+
 int initialize_resource_table() {
   // random between 15-25% should be shareable resources
   int amountShareable = getRandomRange(15, 25);
@@ -12,23 +41,24 @@ int initialize_resource_table() {
   printf("real amount shareable: %d\n", realAmountShareable);
 
   resource_table->total_processes = 0;
+  resource_table->total_resources = RESOURCES_DEFAULT;
 
   // initialize all 20 resource descriptors
-  for(int i=0; i<20; i++) {
+  for(int i=0; i<RESOURCES_DEFAULT; i++) {
     int shareable = 0;
     if(i<= (realAmountShareable - 1))
       shareable = 1;
     int n_resources = getRandom(10) + 1;
-    resource_table->resources[i] = init_resource(shareable, n_resources);
+    resource_table->resources[i] = init_resource(shareable, n_resources, alphabet[i]);
   }
 }
 
-Resource init_resource(int shareable, int n_resources) {
+Resource init_resource(int shareable, int n_resources, const char *name) {
   Resource new;
 
-  new.name = "hello";
+  new.name = name;
   new.shareable = shareable; // where 0 is not shareable, and 1 is shareable
-  new.n_resources = n_resources;
+  new.n_resources = n_resources; // 1-10
 
   // defaults for now
   new.allocation = 0;
@@ -43,7 +73,7 @@ Resource init_resource(int shareable, int n_resources) {
 void print_resources() {
   printf("\n");
   printf("#, name, shareable?, n_resources\n");
-  for(int i=0; i<20; i++) {
+  for(int i=0; i<RESOURCES_DEFAULT; i++) {
     printf("Resource #%d: %s, %d, %d\n", i, resource_table->resources[i].name, resource_table->resources[i].shareable, resource_table->resources[i].n_resources);
   }
   printf("\n");
@@ -87,11 +117,12 @@ Clock add_time_to_clock(int sec, int ns) {
   return time_diff;
 }
 
-int request() {
+int request(int index, int amount) {
   // mock for now
   int error = 0;
 
   // request system resources, update the resource table accordingly
+  printf("requesting %d resources for descriptor #%d\n", amount, index);
 
 
   if(error == 1) {
@@ -100,11 +131,12 @@ int request() {
   return 0;
 }
 
-int allocate() {
+int allocate(int index, int amount) {
   // mock for now
   int error = 0;
 
   // allocate system resources, update the resource table accordingly
+  printf("allocating %d resources for descriptor #%d\n", amount, index);
   
 
   if(error == 1) {
@@ -113,12 +145,12 @@ int allocate() {
   return 0;
 }
 
-int release() {
+int release(int index) {
   // mock for now
   int error = 0;
 
   // release system resources, update the resource table accordingly
-  
+  printf("releasing resources for descriptor #%d\n", index);
 
   if(error == 1) {
     return -1;

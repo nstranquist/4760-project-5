@@ -60,7 +60,7 @@ int msgprintf(char *fmt, int msg_type, int queueid, ...) {               /* outp
   return 0;
 }
 
-int msgwrite(void *buf, int len, int msg_type, int queueid, int pid, int timeslice) {     /* output buffer of specified length */
+int msgwrite(void *buf, int len, int msg_type, int queueid) {     /* output buffer of specified length */
   int error = 0;
   mymsg_t *mymsg;
 
@@ -72,8 +72,6 @@ int msgwrite(void *buf, int len, int msg_type, int queueid, int pid, int timesli
   memcpy(mymsg->mtext, buf, len);
 
   mymsg->mtype = msg_type; // 1 or 2
-  mymsg->pid = pid;
-  mymsg->timeslice = timeslice;
 
   fprintf(stderr, "sending timeslice\n");
 
@@ -97,6 +95,7 @@ int remmsgqueue(int queueid) {
 }
 
 void print_message(mymsg_t msg) {
-  printf("Printing Message: msg_type, msg_text, ...\n");
+  printf("-----------Printing Message: ...------------\n");
   printf("%ld, %s\n", msg.mtype, msg.mtext);
+  // printf("resource: %d, amount: %d\n", msg.resource_index, msg.resource_request);
 }
