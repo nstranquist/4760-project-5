@@ -378,7 +378,7 @@ int main(int argc, char*argv[]) {
             // printf("resource value: %d\n", resource_value);
             // printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
 
-            add_time_to_clock(resource_time_sec, resource_time_ns);
+            // add_time_to_clock(resource_time_sec, resource_time_ns);
 
             snprintf(results_msg, sizeof(results_msg), "Master has detected Process %d requesting R%d at time: %d:%d", request_process, resource_index, resource_time_sec, resource_time_ns);
             logmsg(results_msg);
@@ -461,7 +461,7 @@ int main(int argc, char*argv[]) {
             // printf("resource value: %d\n", resource_value);
             // printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
 
-            add_time_to_clock(resource_time_sec, resource_time_ns);
+            // add_time_to_clock(resource_time_sec, resource_time_ns);
 
             snprintf(results_msg, sizeof(results_msg), "Master has acknowledged P%d releasing R%d at time: %d:%d", request_process, resource_index, resource_time_sec, resource_time_ns);
             logmsg(results_msg);
@@ -496,7 +496,7 @@ int main(int argc, char*argv[]) {
             resource_time_sec = atoi(resource_time_sec_str);
             resource_time_ns = atoi(resource_time_ns_str);
 
-            add_time_to_clock(resource_time_sec, resource_time_ns);
+            // add_time_to_clock(resource_time_sec, resource_time_ns);
 
             // print index and value
             // printf("resource time: %d sec, %d ns\n", resource_time_sec, resource_time_ns);
@@ -693,6 +693,7 @@ void print_current_resources() {
       else
         fprintf(fp, "\t%d", found_process.resources[res_index].allocation);
     }
+    fprintf(fp, "\n");
   }
 
   fclose(fp);
