@@ -25,6 +25,7 @@
 #include "utils.h"
 #include "deadlock_detection.h"
 #include "queue.h"
+#include "circular_queue.h"
 
 #define PERMS (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 
@@ -42,6 +43,10 @@ Clock time_diff; // keep track of last round's time difference
 
 mymsg_t mymsg; // for queue
 
+Queue wait_queue;
+
+int available_pids[MAX_PROCESSES_TOTAL];
+
 
 // function definitions
 int detachandremove(int shmid, void *shmaddr);
@@ -53,7 +58,10 @@ void generate_next_child_fork();
 int wait_time_is_up(); // compares next_fork with Clock's current time
 int check_line_count(FILE *fp);
 Clock increment_clock();
-
+void init_pids();
+int getNextPid();
+void freePid(int pid);
+int found_in_resource_array(int resource_index, int process_index);
 
 static void myhandler(int signum) {
   // is ctrl-c interrupt
@@ -183,6 +191,9 @@ int main(int argc, char*argv[]) {
     return 1;
   }
 
+  // Initialize Process Queues
+  wait_queue = init_circular_queue();
+
   // Start program timer
   alarm(MAX_SECONDS);
 
@@ -258,8 +269,23 @@ int main(int argc, char*argv[]) {
       char* shmid_str = malloc( shmid_length + 1 );
       snprintf( shmid_str, shmid_length + 1, "%d", shmid );
 
+      // add pid to resource process
+      int pid = getNextPid();
+      // busy wait until available pid to satisfy max running processes
+      while(pid == -1) {
+        sleep(1);
+        printf("process needs to wait for available pid\n");
+        pid = getNextPid();
+      }
+      printf("next pid got: %d\n", pid);
+      resource_table->processes[pid].pid = pid;
+
+      int pid_length = snprintf( NULL, 0, "%d", shmid );
+      char* pid_str = malloc( pid_length + 1 );
+      snprintf( pid_str, pid_length + 1, "%d", shmid );
+
       // execl
-      execl("./user", "./user", process_b_str, shmid_str, (char *) NULL); // 1 arg: pass shmid
+      execl("./user", "./user", process_b_str, shmid_str, pid_str, (char *) NULL); // 1 arg: pass shmid
       perror("oss: Error: Child failed to execl");
       cleanup();
       exit(0);
@@ -316,6 +342,66 @@ int main(int argc, char*argv[]) {
       if(request_type == 0) { // is a request
         snprintf(results_msg, sizeof(results_msg), "Master has detected Process %d requesting %s at time: %d:%d", request_process, resource_table->resources[resource_index].name, resource_time_sec, resource_time_ns);
         logmsg(results_msg);
+
+        // check if resource is available by running deadlock detection
+        printf("running deadlock detection...\n");
+
+
+        char results_msg_deadlock[MAX_MSG_SIZE];
+        snprintf(results_msg_deadlock, sizeof(results_msg_deadlock), "Master running deadlock detection at time %d:%d", resource_table->clock.sec, resource_table->clock.ns);
+        logmsg(results_msg_deadlock);
+
+        int is_unsafe = 0; // mocking result for now
+
+        // log if unsuccessful state change
+        if(is_unsafe == 1) {
+          // TODO: get real data, replace the mocks with it
+          logmsg("\tP1, P2, P3 deadlocked");
+          logmsg("\tUnsafe state after granting request; request not granted");
+          logmsg("\tP1 added to wait queue, waiting for R4");
+        }
+        // log results if safe
+        else {
+          char results_msg_3[MAX_MSG_SIZE];
+          // log that it has been released if successful
+          logmsg("\tSafe state after granting request");
+          snprintf(results_msg_3, sizeof(results_msg_3), "\tMaster granting Process %d request %s at time %d:%d", request_process, resource_table->resources[resource_index].name, resource_time_sec, resource_time_ns);
+          logmsg(results_msg_3);
+        }
+      }
+      else if(request_type == 1) {
+        snprintf(results_msg, sizeof(results_msg), "Master has acknowledged Process %d releasing %s at time: %d:%d", request_process, resource_table->resources[resource_index].name, resource_time_sec, resource_time_ns);
+        logmsg(results_msg);
+
+        // release the resource
+
+
+        // log that it has been released
+        char results_msg_2[MAX_MSG_SIZE];
+        snprintf(results_msg_2, sizeof(results_msg_2), "Master has released %s at time: %d:%d", resource_table->resources[resource_index].name, resource_time_sec, resource_time_ns);
+        logmsg(results_msg_2);
+      }
+      else if(request_type == 2) {
+        // is terminating. release all resources, then reset resource_table
+        char results_msg_terminate[MAX_MSG_SIZE];
+        snprintf(results_msg_terminate, sizeof(results_msg_terminate), "Process %d terminated at time %d:%d", request_process, resource_time_sec, resource_time_ns);
+        logmsg(results_msg_terminate);
+        
+        // log which resources freed
+        char results_msg_terminate_release[MAX_MSG_SIZE];
+        snprintf(results_msg_terminate_release, sizeof(results_msg_terminate_release), "\tResources Released: ");
+        for(int res_index=0; res_index<RESOURCES_DEFAULT; res_index++) {
+          // if the index 'res_index' is found in the array of indexes in the process's resource array, then log it, then clear it
+          if(found_in_resource_array(res_index, request_process) == 1) {
+            // log it
+            snprintf(results_msg_terminate_release, sizeof(results_msg_terminate_release), "R%d:%d, ", resource_table->processes[request_process].resources[res_index].index, resource_table->processes[request_process].resources[res_index].allocation);
+          }
+        }
+
+        logmsg(results_msg_terminate_release);
+
+        // free pid
+        freePid(request_process);
       }
 
 
@@ -360,6 +446,10 @@ int main(int argc, char*argv[]) {
     printf("new # total processes: %d, new # active processes: %d\n", resource_table->total_processes, resource_table->current_processes);
 
     // increment in cs
+
+    // print the current system resources
+    print_resources(resource_table);
+    
 
     time_diff = increment_clock();
     sleep(1);
@@ -559,3 +649,43 @@ Clock increment_clock() {
 
 // xxx:xxxx
 // char * get_time_string() {  }
+
+void init_pids() {
+  for(int i=0; i<MAX_PROCESSES_RUNNING; i++) {
+    available_pids[i] = -1;
+  }
+}
+
+int getNextPid() {
+  for(int i=0; i<MAX_PROCESSES_RUNNING; i++) {
+    if(available_pids[i] == -1) {
+      available_pids[i] = i;
+      return i;
+    }
+  }
+  return -1;
+}
+
+void freePid(int pid) {
+  for(int i=0; i<MAX_PROCESSES_RUNNING; i++) {
+    if(available_pids[i] == pid) {
+      available_pids[i] = -1;
+      return;
+    }
+  }
+}
+
+int found_in_resource_array(int resource_index, int process_index) {
+  // search resource array at process_index for the value. return 1 if found, 0 if not
+  for(int b=0; b<RESOURCES_DEFAULT; b++) {
+    if(resource_table->processes[process_index].resources[b].index == resource_index) {
+      // it exists, so find the amount allocated and log it
+      if(resource_table->processes[process_index].resources[b].allocation > 0) {
+        printf("res %d had %d allocated to process %d\n", resource_index, resource_table->processes[process_index].resources[b].allocation, process_index);
+        return 1;
+      }
+    }
+  }
+
+  return 0;
+}

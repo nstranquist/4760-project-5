@@ -21,11 +21,24 @@ typedef struct {
 } Resource; // ResourceDescriptor
 
 typedef struct {
+  int index;
+  int allocation;
+} ProcessResource;
+
+typedef struct {
+  int pid;
+  // int name; // i.e. P1, P2, etc.
+  ProcessResource resources[RESOURCES_DEFAULT];
+} Process;
+
+typedef struct {
   int total_resources; // 10
 
   int queueid;
   int total_processes;
   int current_processes;
+
+  Process processes[MAX_PROCESSES_TOTAL];
 
   Clock clock;
   Resource resources[RESOURCES_DEFAULT]; // todo: define # of resource descriptors in configuration
@@ -33,6 +46,7 @@ typedef struct {
 
 int initialize_resource_table();
 Resource init_resource(int shareable, int n_resources, const char *name);
+Process init_process();
 void print_resources();
 
 Clock increment_clock_round();

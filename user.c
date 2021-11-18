@@ -11,11 +11,13 @@
 #include "utils.h"
 #include "resource_table.h"
 #include "queue.h"
+#include "circular_queue.h"
 // #include "semaphore_manager.h"
 
 extern ResourceTable *resource_table;
 int size;
 int shmid;
+int pid;
 // semaphore structures here, if needed
 
 mymsg_t mymsg;
@@ -28,24 +30,29 @@ int main(int argc, char *argv[]) {
 
   srand(time(NULL) + getpid()); // re-seed the random
 
-  if(argc != 3) {
-    perror("user: Usage: `./user b s`, where b is an integer and s is the shared memory id\n");
+  if(argc != 4) {
+    perror("oss: user: Usage: `./user b s p`, where b is an integer and s is the shared memory id and p is the simulated pid\n");
     return 1;
   }
   char *b_str = argv[1];
   printf("b from params: %s\n", b_str);
 
   if(!atoi(b_str)) {
-    perror("user: Error: paramter received for 'B' is not a number\n");
+    perror("oss: user: Error: paramter received for 'B' is not a number\n");
     return 1;
   }
 
   if(!atoi(argv[2])) {
-    fprintf(stderr, "user: Error: argument for shmid must be a valid integer\n");
+    fprintf(stderr, "oss: user: Error: argument for shmid must be a valid integer\n");
   }
   shmid = atoi(argv[2]);
 
   fprintf(stderr, "shmid: %d\n", shmid);
+
+  if(!atoi(argv[3])) {
+    fprintf(stderr, "oss: user: Error: argument for pid must be a valid integer\n");
+  }
+  pid = atoi(argv[3]);
 
   // attach shared memory
   resource_table = (ResourceTable *)shmat(shmid, NULL, 0);
@@ -82,7 +89,6 @@ int main(int argc, char *argv[]) {
   printf("requested res amount: %d\n", requested_resources);
   // int resource_request_amount = getRandom(RESOURCES_DEFAULT-1) + 1;
   // printf("# requested: %d\n", resource_request_amount);
-  int pid = getpid();
 
   buf = format_string(buf, pid);
   strcat(buf, "-");

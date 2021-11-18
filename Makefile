@@ -3,11 +3,11 @@ CC = gcc
 
 all: oss user
 
-oss: oss.o user.o resource_table.o semaphore_manager.o utils.o deadlock_detection.o queue.o config.h
-	gcc -Wall -g -o oss oss.o resource_table.o semaphore_manager.o utils.o deadlock_detection.o queue.o
+oss: oss.o user.o resource_table.o semaphore_manager.o utils.o deadlock_detection.o queue.o circular_queue.o config.h
+	gcc -Wall -g -o oss oss.o resource_table.o semaphore_manager.o utils.o deadlock_detection.o queue.o circular_queue.o
 
-user: user.o utils.o resource_table.o queue.o
-	gcc -Wall -g -o user user.o utils.o resource_table.o queue.o
+user: user.o utils.o resource_table.o queue.o circular_queue.o
+	gcc -Wall -g -o user user.o utils.o resource_table.o queue.o circular_queue.o
 
 resource_table: resource_table.o utils.o
 	gcc -Wall -g -o resource_table resource_table.o utils.o
@@ -24,8 +24,11 @@ deadlock_detection: deadlock_detection.o
 queue: queue.o
 	gcc -Wall -g -o queue queue.o
 
+circular_queue: circular_queue.o
+	gcc -Wall -g -o circular_queue circular_queue.o
+
 .c.o:
 	$(CC) -g -c $<
 
 clean:
-	rm -f *.o oss user resource_table semaphore_manager utils
+	rm -f *.o oss user resource_table semaphore_manager utils queue circular_queue

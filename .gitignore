@@ -12,3 +12,4 @@ semaphore_manager
 utils
 deadlock_detection
 queue
+circular_queue

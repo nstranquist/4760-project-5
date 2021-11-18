@@ -51,6 +51,11 @@ int initialize_resource_table() {
     int n_resources = getRandom(10) + 1;
     resource_table->resources[i] = init_resource(shareable, n_resources, alphabet[i]);
   }
+
+  // initialize all 20 of the process helpers
+  for(int i=0; i<RESOURCES_DEFAULT; i++) {
+    resource_table->processes[i] = init_process();
+  }
 }
 
 Resource init_resource(int shareable, int n_resources, const char *name) {
@@ -70,13 +75,43 @@ Resource init_resource(int shareable, int n_resources, const char *name) {
   return new;
 }
 
+Process init_process() {
+  Process new_process;
+
+  new_process.pid = -1;
+
+  for(int j=0; j<RESOURCES_DEFAULT; j++) {
+    new_process.resources[j].index = -1; // -1 means no index assigned
+    new_process.resources[j].allocation = 0;
+  }
+
+  return new_process;
+}
+
 void print_resources() {
-  printf("\n");
+  printf("\nCurrent System Resources:\n");
   printf("#, name, shareable?, n_resources\n");
   for(int i=0; i<RESOURCES_DEFAULT; i++) {
     printf("Resource #%d: %s, %d, %d\n", i, resource_table->resources[i].name, resource_table->resources[i].shareable, resource_table->resources[i].n_resources);
   }
   printf("\n");
+
+  // now, also print to logfile
+  FILE *logfile = fopen("oss.log", "a+");
+  fprintf(logfile, "\nCurrent System Resources:\n");
+  // print all resource names
+  for(int i=0; i<RESOURCES_DEFAULT; i++) {
+    fprintf(logfile, "\t%s", resource_table->resources[i].name);
+  }
+  // print the rows of the resources for each process
+  for(int i=0; i<resource_table->total_processes; i++) {
+    fprintf(logfile, "\nP%d", i);
+
+    // for each process, print its resources allocated
+    for(int j=0; j<RESOURCES_DEFAULT; j++) {
+      fprintf(logfile, "\t%d", resource_table->processes[i].resources[j].allocation);
+    }
+  }
 }
 
 // function implementations to work with process table
