@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
   int should_terminate = 0; // 1 for true
 
   while(should_terminate != 1) {
+    printf("\nUser.c in should_terminate loop!\n");
 
     // AFTER BEING SCHEDULED...
     // generate random from [0, B], where B is the upper bound for when a process should request a new resource
@@ -146,7 +147,6 @@ int main(int argc, char *argv[]) {
       int requested_resources = getRandom(n_resources) + 1;
       printf("requested res amount: %d\n", requested_resources);
 
-      printf("next\n");
       char *buf;
       int msg_type = 1; // 1 for request
       asprintf(&buf, "%d-%d-%d-%d-%d-%d-", pid, msg_type, resource_index_requested, requested_resources, end_run.sec, end_run.ns);
@@ -197,7 +197,7 @@ int main(int argc, char *argv[]) {
     int next_termination = getRandom(251); // 0-250
     if(next_termination > 200) {
       // should terminate
-      printf("terminating child\n");
+      fprintf(stderr, "terminating child\n");
       should_terminate = 1;
 
       // add on the ms to terminate

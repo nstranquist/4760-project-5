@@ -72,7 +72,6 @@ int msgwrite(void *buf, int len, int msg_type, int queueid) {     /* output buff
   memcpy(mymsg->mtext, buf, len);
 
   mymsg->mtype = msg_type; // 1 or 2
-
   if (msgsnd(queueid, mymsg, len, 0) == -1) {
     perror("oss: Error: Could not send the message");
     error = errno;
